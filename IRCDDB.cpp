@@ -19,12 +19,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include <wx/log.h>
-#include <wx/thread.h>
 
 #include "IRCDDB.h"
 
 #include "IRCClient.h"
+
+#include <wx/wx.h>
+
 
 struct CIRCDDBPrivate
 {

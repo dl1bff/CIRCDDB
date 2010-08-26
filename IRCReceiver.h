@@ -24,6 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #if !defined(_IRCRECEIVER_H)
 #define _IRCRECEIVER_H
 
+#include <wx/wx.h>
 
 class IRCReceiver : public wxThreadHelper
 {

@@ -20,11 +20,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-#include <wx/thread.h>
-#include <wx/log.h>
 
 #include "IRCReceiver.h"
 
+#include <wx/wx.h>
 
 IRCReceiver::IRCReceiver( )
 {

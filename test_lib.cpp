@@ -20,18 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-#include <wx/init.h>
-#include <wx/string.h>
-#include <wx/socket.h>
-#include <wx/log.h>
-#include <wx/utils.h>
-
 #include "IRCDDB.h"
 
+#include <wx/wx.h>
 
 
 int main (int argc, char *argv[])
 {
+
+  srand(time(0));
 
   wxInitializer init;
 
@@ -56,7 +53,7 @@ int main (int argc, char *argv[])
   ii.open();
 
   wxLogVerbose(wxT("main program running"));
-  wxSleep(10);
+  wxSleep(100);
   wxLogVerbose(wxT("main program running"));
 
   ii.close();

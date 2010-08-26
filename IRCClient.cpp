@@ -20,29 +20,50 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
-#include <wx/log.h>
-#include <wx/thread.h>
 
 #include "IRCClient.h"
 
+#include <wx/wx.h>
+
+
+#if defined(__WINDOWS__)
+#include <winsock.h>
+
+#include "getaddrinfo.h"
+
+#else
 #include <netdb.h>
+#endif
+
+
+#include <fcntl.h>
+#include <errno.h>
 
 
 
 static int getAllIPV4Addresses ( const char * name, unsigned short port,
     unsigned int * num, struct sockaddr_in * addr, unsigned int max_addr )
 {
+
+#if defined(__WINDOWS__)
+    // Initialize Winsock
+  WSADATA wsaData;
+  int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (iResult != 0) {
+        wxLogError(wxT("WSAStartup failed: %d"), iResult);
+        return 1;
+    }
+#endif
+
+
   struct addrinfo hints;
   struct addrinfo * res;
 
-  bzero(&hints, sizeof(struct addrinfo));
+  memset(&hints, 0x00, sizeof(struct addrinfo));
   hints.ai_family = AF_INET;
   hints.ai_socktype = SOCK_STREAM;
 
-  int r;
-
-
-  r = getaddrinfo( name, NULL, &hints, &res );
+  int r = getaddrinfo( name, NULL, &hints, &res );
 
   if (r == 0)
   {
@@ -182,41 +203,204 @@ void IRCClient::stopWork()
 
 wxThread::ExitCode IRCClient::Entry ()
 {
-  recv = new IRCReceiver();
+//  recv = new IRCReceiver();
 
-  recv->startWork();
+//  recv->startWork();
 
-  unsigned int num;
+  unsigned int numAddr;
 
 #define MAXIPV4ADDR 10
   struct sockaddr_in addr[MAXIPV4ADDR];
 
-  if (getAllIPV4Addresses(host_name, port, &num, addr, MAXIPV4ADDR) == 0)
-  {
-    wxLogVerbose(wxT("NumIP: %d"), num);
-
-    if (num > 0)
-    {
-      for (unsigned int i=0; i < num; i++)
-      {
-	unsigned char * h = (unsigned char *) &(addr[i].sin_addr);
-
-	wxLogVerbose(wxString::Format(wxT("%d.%d.%d.%d") , h[0], h[1], h[2], h[3]));
-      }
-    }
-  }
+  int state = 0;
+  int timer = 0;
+  int sock;
+  unsigned int currentAddr;
 
   while ((!GetThread()->TestDestroy()) && (!terminateThread))
   {
 
-    wxLogVerbose(wxT("IRCClient: tick"));
+    if (timer > 0)
+    {
+      timer --;
+    }
+
+    switch (state)
+    {
+    case 0:
+      if (timer == 0)
+      {
+	timer = 30;
+
+	if (getAllIPV4Addresses(host_name, port, &numAddr, addr, MAXIPV4ADDR) == 0)
+	{
+	  wxLogVerbose(wxT("IRCClient::Entry: number of DNS entries %d"), numAddr);
+	  if (numAddr > 0)
+	  {
+	    currentAddr = 0;
+	    state = 1;
+	    timer = 0;
+	  }
+	}
+      }
+      break;
+
+    case 1:
+      if (timer == 0)
+      {
+	sock = socket( PF_INET, SOCK_STREAM, IPPROTO_TCP);
+
+	if (sock < 0)
+	{
+	  wxLogSysError(wxT("IRCClient::Entry: socket"));
+	  timer = 30;
+	  state = 0;
+	}
+	else
+	{
+	  if (fcntl( sock, F_SETFL, O_NONBLOCK ) < 0)
+	  {
+	    wxLogSysError(wxT("IRCClient::Entry: fcntl"));
+	    close(sock);
+	    timer = 30;
+	    state = 0;
+	  }
+	  else
+	  {
+	    unsigned char * h = (unsigned char *) &(addr[currentAddr].sin_addr);
+	    wxLogVerbose(wxT("IRCClient::Entry: trying to connect to %d.%d.%d.%d"), 
+		   h[0], h[1], h[2], h[3]);
+		
+	    int res = connect(sock, (struct sockaddr *) (addr + currentAddr), sizeof (struct sockaddr_in));
+
+	    if (res == 0)
+	    {
+	      wxLogVerbose(wxT("IRCClient::Entry: connected"));
+	      state = 4;
+	    }
+	    else 
+	    {
+	      if (errno == EINPROGRESS)
+	      {
+		wxLogVerbose(wxT("IRCClient::Entry: connect in progress"));
+		state = 3;
+		timer = 10;  // 5 second timeout
+	      }
+	      else
+	      {
+		wxLogSysError(wxT("IRCClient::Entry: connect"));
+		close(sock);
+
+		currentAddr ++;
+		if (currentAddr >= numAddr)
+		{
+		  state = 0;
+		  timer = 30;
+		}
+		else
+		{
+		  state = 1;
+		  timer = 4;
+		}
+	      }
+	    }
+	  } // connect
+	}
+      }
+      break;
+    
+    case 3:
+      {
+	struct timeval tv;
+	tv.tv_sec = 0; 
+        tv.tv_usec = 0; 
+	fd_set myset;
+	FD_ZERO(&myset); 
+	FD_SET(sock, &myset); 
+	int res;
+	res = select(sock+1, NULL, &myset, NULL, &tv); 
+
+	if (res < 0)
+	{
+	  wxLogSysError(wxT("IRCClient::Entry: select"));
+	  close(sock);
+	  state = 0;
+	  timer = 30;
+	}
+	else if (res > 0) // connect is finished
+	{
+	  socklen_t val_len;
+	  int value;
+
+	  val_len = sizeof value;
+
+	  if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &value, &val_len) < 0)
+	  {
+	     wxLogSysError(wxT("IRCClient::Entry: getsockopt"));
+	     close(sock);
+	     state = 0;
+	     timer = 30;
+	  }
+	  else
+	  {
+	    if (value != 0)
+	    {
+	      wxLogWarning(wxT("IRCClient::Entry: SO_ERROR=%d"), value);
+	      close(sock);
+
+	      currentAddr ++;
+	      if (currentAddr >= numAddr)
+	      {
+		state = 0;
+		timer = 30;
+	      }
+	      else
+	      {
+		state = 1;
+		timer = 2;
+	      }
+	    }
+	    else
+	    {
+	      wxLogVerbose(wxT("IRCClient::Entry: connected2"));
+	      state = 4;
+	    }
+	  }
+
+	}
+	else if (timer == 0)
+	{  // select timeout and timer timeout
+	  wxLogVerbose(wxT("IRCClient::Entry: connect timeout"));
+	  close(sock);
+
+	  currentAddr ++;
+	  if (currentAddr >= numAddr)
+	  {
+	    state = 0;
+	    timer = 30;
+	  }
+	  else
+	  {
+	    state = 1; // open new socket
+	    timer = 2;
+	  }
+	}
+
+      }
+      break;
+
+    case 4:
+      break;
+
+    }
 
 
-    wxThread::Sleep(600);
+
+    wxThread::Sleep(500);
 
   }
 
-  recv->stopWork();
+ // recv->stopWork();
 
   return 0;
 }
