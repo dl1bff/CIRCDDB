@@ -95,7 +95,7 @@ static int getAllIPV4Addresses ( const char * name, unsigned short port,
 	}
       }
 
-      for (rp = res, i=0 ; rp != NULL; rp = rp->ai_next)
+      for (rp = res, i=0 ; (rp != NULL) && (i < numAddr); rp = rp->ai_next)
       {
 	if (rp->ai_family == AF_INET)
 	{
@@ -199,13 +199,9 @@ wxThread::ExitCode IRCClient::Entry ()
     {
       for (unsigned int i=0; i < num; i++)
       {
-	unsigned char * h = (unsigned char *) (addr + i);
+	unsigned char * h = (unsigned char *) &(addr[i].sin_addr);
 
-	for (int j=0; j < 8; j++)
-	{
-
-	  wxLogVerbose(wxString::Format(wxT(" %d") , h[j]));
-	}
+	wxLogVerbose(wxString::Format(wxT("%d.%d.%d.%d") , h[0], h[1], h[2], h[3]));
       }
     }
   }
@@ -224,6 +220,7 @@ wxThread::ExitCode IRCClient::Entry ()
 
   return 0;
 }
+
 
 
 
