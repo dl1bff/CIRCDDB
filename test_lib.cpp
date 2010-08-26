@@ -49,7 +49,7 @@ int main (int argc, char *argv[])
     return 1;
   }
 
-  CIRCDDB ii( wxT("group1-irc.ircddb.net"), 9007, wxT("u-test"), wxT("secret"));
+  CIRCDDB ii( wxT("test1.mdx.de"), 9007, wxT("u-test"), wxT("secret"));
 
   wxLogVerbose(wxT("main: before open"));
 
