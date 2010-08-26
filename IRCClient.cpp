@@ -21,25 +21,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <wx/log.h>
-#include <wx/string.h>
 #include <wx/thread.h>
-#include <wx/socket.h>
-
 
 #include "IRCClient.h"
 
-
-WX_DECLARE_LIST( wxIPV4address, IPV4List );
-#include <wx/listimpl.cpp>
-WX_DEFINE_LIST( IPV4List );
-
-
 #include <netdb.h>
 
-static IPV4List * getAllIPV4Addresses ( const char * name, unsigned short port )
-{
-  IPV4List * k = new IPV4List();
 
+
+static int getAllIPV4Addresses ( const char * name, unsigned short port,
+    unsigned int * num, struct sockaddr_in * addr, unsigned int max_addr )
+{
   struct addrinfo hints;
   struct addrinfo * res;
 
@@ -55,40 +47,86 @@ static IPV4List * getAllIPV4Addresses ( const char * name, unsigned short port )
   if (r == 0)
   {
     struct addrinfo * rp;
+    unsigned int numAddr = 0;
 
     for (rp = res; rp != NULL; rp = rp->ai_next)
     {
       if (rp->ai_family == AF_INET)
       {
-	struct sockaddr_in * sin = (struct sockaddr_in *) rp->ai_addr;
-	unsigned char * addr = (unsigned char *) & sin->sin_addr;
-
-	wxString a = wxString::Format(wxT("%d.%d.%d.%d"),
-	  ((unsigned int) addr[0]),
-	  ((unsigned int) addr[1]),
-	  ((unsigned int) addr[2]),
-	  ((unsigned int) addr[3]) ) ;
-
-	wxIPV4address * ip = new wxIPV4address();
-
-	ip->Hostname(a);
-	ip->Service(port);
-
-	k->Append(ip);
+	numAddr ++;
       }
     }
 
+    if (numAddr > 0)
+    {
+      if (numAddr > max_addr)
+      {
+	numAddr = max_addr;
+      }
+
+      int * shuffle = new int[numAddr];
+
+      unsigned int i;
+
+      for (i=0; i < numAddr; i++)
+      {
+	shuffle[i] = i;
+      }
+      
+      for (i=0; i < (numAddr - 1); i++)
+      {
+	if (rand() & 1)
+	{
+	  int tmp;
+	  tmp = shuffle[i];
+	  shuffle[i] = shuffle[i+1];
+	  shuffle[i+1] = tmp;
+	}
+      }
+
+      for (i=(numAddr - 1); i > 0; i--)
+      {
+	if (rand() & 1)
+	{
+	  int tmp;
+	  tmp = shuffle[i];
+	  shuffle[i] = shuffle[i-1];
+	  shuffle[i-1] = tmp;
+	}
+      }
+
+      for (rp = res, i=0 ; rp != NULL; rp = rp->ai_next)
+      {
+	if (rp->ai_family == AF_INET)
+	{
+	  memcpy( addr+shuffle[i], rp->ai_addr, sizeof (struct sockaddr_in) );
+
+	  addr[shuffle[i]].sin_port = htons(port);
+
+	  i++;
+	}
+      }
+
+      delete shuffle;
+    }
+
+    *num = numAddr;
+
     freeaddrinfo(res);
+
+    return 0;
+
   }
   else
   {
     wxString e( gai_strerror(r), wxConvUTF8);
 
     wxLogWarning(wxT("getaddrinfo: ") + e );
+
+    return 1;
   }
 
 
-  return k;
 }
 
 
@@ -148,19 +186,29 @@ wxThread::ExitCode IRCClient::Entry ()
 
   recv->startWork();
 
-  IPV4List * list = getAllIPV4Addresses(host_name, port);
+  unsigned int num;
 
-  wxLogVerbose(wxT("NumIP: %d"), list->GetCount());
+#define MAXIPV4ADDR 10
+  struct sockaddr_in addr[MAXIPV4ADDR];
 
-  IPV4List::iterator iter;
-  for (iter = list->begin(); iter != list->end(); ++iter)
+  if (getAllIPV4Addresses(host_name, port, &num, addr, MAXIPV4ADDR) == 0)
   {
-    wxIPV4address *current = *iter;
+    wxLogVerbose(wxT("NumIP: %d"), num);
 
-    wxLogVerbose(wxT("IP: %s") + current->IPAddress() );
+    if (num > 0)
+    {
+      for (unsigned int i=0; i < num; i++)
+      {
+	unsigned char * h = (unsigned char *) (addr + i);
+
+	for (int j=0; j < 8; j++)
+	{
+
+	  wxLogVerbose(wxString::Format(wxT(" %d") , h[j]));
+	}
+      }
+    }
   }
-
-  delete list;
 
   while ((!GetThread()->TestDestroy()) && (!terminateThread))
   {

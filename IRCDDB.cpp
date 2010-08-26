@@ -19,8 +19,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include <wx/socket.h>
 #include <wx/log.h>
+#include <wx/thread.h>
 
 #include "IRCDDB.h"
 
@@ -84,14 +84,14 @@ IRCDDB_RESPONSE_TYPE CIRCDDB::getMessageType()
 
 // Get a gateway message, as a result of IDRT_GATEWAY returned from getMessageType()
 // A false return implies a network error
-bool CIRCDDB::receiveGateway(wxString& gatewayCallsign, wxIPV4address& address, DSTAR_PROTOCOL& protocol)
+bool CIRCDDB::receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol)
 {
   return true;
 }
 
 // Get a user message, as a result of IDRT_USER returned from getMessageType()
 // A false return implies a network error
-bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxIPV4address& address)
+bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& address)
 {
   return true;
 }

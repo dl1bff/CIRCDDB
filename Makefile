@@ -18,9 +18,9 @@
 #
 
 
-CPPFLAGS=-Wall ` wx-config --cppflags base net`
+CPPFLAGS=-Wall ` wx-config --cppflags base `
 
-LDFLAGS=` wx-config --libs base net` 
+LDFLAGS=` wx-config --libs base ` 
 
 
 L=libircddb.a
