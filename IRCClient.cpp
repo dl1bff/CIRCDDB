@@ -258,6 +258,16 @@ wxThread::ExitCode IRCClient::Entry ()
 	}
 	else
 	{
+#if defined(__WINDOWS__)
+	  u_long nonBlock = 1UL;
+	  if (ioctlsocket( sock, FIONBIO, &nonBlock ) != 0)
+	  {
+	    wxLogSysError(wxT("IRCClient::Entry: ioctlsocket"));
+	    closesocket(sock);
+	    timer = 30;
+	    state = 0;
+	  }
+#else
 	  if (fcntl( sock, F_SETFL, O_NONBLOCK ) < 0)
 	  {
 	    wxLogSysError(wxT("IRCClient::Entry: fcntl"));
@@ -265,6 +275,7 @@ wxThread::ExitCode IRCClient::Entry ()
 	    timer = 30;
 	    state = 0;
 	  }
+#endif
 	  else
 	  {
 	    unsigned char * h = (unsigned char *) &(addr[currentAddr].sin_addr);
@@ -279,8 +290,12 @@ wxThread::ExitCode IRCClient::Entry ()
 	      state = 4;
 	    }
 	    else 
-	    {
+	    { 
+#if defined(__WINDOWS__)
+	      if (WSAGetLastError() == WSAEWOULDBLOCK)
+#else
 	      if (errno == EINPROGRESS)
+#endif
 	      {
 		wxLogVerbose(wxT("IRCClient::Entry: connect in progress"));
 		state = 3;
@@ -289,8 +304,11 @@ wxThread::ExitCode IRCClient::Entry ()
 	      else
 	      {
 		wxLogSysError(wxT("IRCClient::Entry: connect"));
+#if defined(__WINDOWS__)
+		closesocket(sock);
+#else
 		close(sock);
-
+#endif
 		currentAddr ++;
 		if (currentAddr >= numAddr)
 		{
@@ -323,21 +341,33 @@ wxThread::ExitCode IRCClient::Entry ()
 	if (res < 0)
 	{
 	  wxLogSysError(wxT("IRCClient::Entry: select"));
+#if defined(__WINDOWS__)
+	  closesocket(sock);
+#else
 	  close(sock);
+#endif
 	  state = 0;
 	  timer = 30;
 	}
 	else if (res > 0) // connect is finished
 	{
+#if defined(__WINDOWS__)
+	  int val_len;
+#else
 	  socklen_t val_len;
+#endif
 	  int value;
 
 	  val_len = sizeof value;
 
-	  if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &value, &val_len) < 0)
+	  if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char *) &value, &val_len) < 0)
 	  {
 	     wxLogSysError(wxT("IRCClient::Entry: getsockopt"));
+#if defined(__WINDOWS__)
+	     closesocket(sock);
+#else
 	     close(sock);
+#endif
 	     state = 0;
 	     timer = 30;
 	  }
@@ -346,8 +376,11 @@ wxThread::ExitCode IRCClient::Entry ()
 	    if (value != 0)
 	    {
 	      wxLogWarning(wxT("IRCClient::Entry: SO_ERROR=%d"), value);
+#if defined(__WINDOWS__)
+	      closesocket(sock);
+#else
 	      close(sock);
-
+#endif
 	      currentAddr ++;
 	      if (currentAddr >= numAddr)
 	      {
@@ -371,8 +404,11 @@ wxThread::ExitCode IRCClient::Entry ()
 	else if (timer == 0)
 	{  // select timeout and timer timeout
 	  wxLogVerbose(wxT("IRCClient::Entry: connect timeout"));
+#if defined(__WINDOWS__)
+	  closesocket(sock);
+#else
 	  close(sock);
-
+#endif
 	  currentAddr ++;
 	  if (currentAddr >= numAddr)
 	  {
