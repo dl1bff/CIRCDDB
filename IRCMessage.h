@@ -19,52 +19,43 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-
-#if !defined(_IRCCLIENT_H)
-#define _IRCCLIENT_H
-
-#include "IRCReceiver.h"
-#include "IRCMessageQueue.h"
-#include "IRCProtocol.h"
+#if !defined(_IRC_MESSAGE_H)
+#define _IRC_MESSAGE_H
 
 #include <wx/wx.h>
 
 
-class IRCClient : public wxThreadHelper
+class IRCMessage
 {
   public:
 
-  IRCClient( const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password );
+    IRCMessage();
 
-  ~IRCClient();
+    IRCMessage( const wxString& toNick, const wxString& msg );
 
-
-  bool startWork();
-
-  void stopWork();
+    ~IRCMessage();
 
 
-  protected:
 
-  virtual wxThread::ExitCode Entry();
+    wxString prefix;
+    wxString command;
+    wxArrayString params;
 
+    int numParams;
 
+    wxString& getPrefixNick();
+    wxString& getPrefixName();
+    wxString& getPrefixHost();
+
+    void composeMessage ( wxString& output );
 
   private:
 
-  char host_name[100];
-  unsigned int port;
-  wxString callsign;
-  wxString password;
+    void parsePrefix();
 
-  bool terminateThread;
-
-  IRCReceiver * recv;
-  IRCMessageQueue * recvQ;
-  IRCMessageQueue * sendQ;
-  IRCProtocol * proto;
+    wxArrayString prefixComponents;
+    bool prefixParsed;
 
 };
 
-
-#endif 
+#endif

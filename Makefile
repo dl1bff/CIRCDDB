@@ -33,10 +33,15 @@ test_lib: test_lib.o $L
 
 $L(IRCDDB.o): IRCDDB.h $L(IRCClient.o)
 
-$L(IRCClient.o): IRCClient.h $L(IRCReceiver.o)
+$L(IRCClient.o): IRCClient.h $L(IRCReceiver.o) $L(IRCProtocol.o)
 
-$L(IRCReceiver.o): IRCReceiver.h
+$L(IRCReceiver.o): IRCReceiver.h $L(IRCMessageQueue.o)
 
+$L(IRCMessageQueue.o): IRCMessageQueue.h $L(IRCMessage.o)
+
+$L(IRCProtocol.o): IRCProtocol.h $L(IRCMessageQueue.o)
+
+$L(IRCMessage.o): IRCMessage.h
 
 
 

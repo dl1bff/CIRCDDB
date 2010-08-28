@@ -46,7 +46,16 @@ int main (int argc, char *argv[])
     return 1;
   }
 
-  CIRCDDB ii( wxT("test1.mdx.de"), 9007, wxT("u-test"), wxT("secret"));
+  if (argc < 3)
+  {
+    wxLogError(wxT("Usage: test_lib <username> <password>"));
+    return 1;
+  }
+
+  CIRCDDB ii( wxT("group1-irc.ircddb.net"), 9007,
+      wxString(argv[1], wxConvUTF8),
+      wxString(argv[2], wxConvUTF8) ); 
+
 
   wxLogVerbose(wxT("main: before open"));
 

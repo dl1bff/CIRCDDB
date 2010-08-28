@@ -162,6 +162,10 @@ IRCClient::IRCClient( const wxString& hostName, unsigned int port, const wxStrin
   this -> port = port;
   this -> password = password;
 
+  proto = new IRCProtocol ( callsign, password, wxT("#dstar") );
+
+  recvQ = NULL;
+  sendQ = NULL;
 
   recv = NULL;
 }
@@ -203,9 +207,6 @@ void IRCClient::stopWork()
 
 wxThread::ExitCode IRCClient::Entry ()
 {
-//  recv = new IRCReceiver();
-
-//  recv->startWork();
 
   unsigned int numAddr;
 
@@ -217,7 +218,7 @@ wxThread::ExitCode IRCClient::Entry ()
   int sock;
   unsigned int currentAddr;
 
-  while ((!GetThread()->TestDestroy()) && (!terminateThread))
+  while (!GetThread()->TestDestroy())
   {
 
     if (timer > 0)
@@ -228,6 +229,12 @@ wxThread::ExitCode IRCClient::Entry ()
     switch (state)
     {
     case 0:
+      if (terminateThread)
+      {
+	wxLogVerbose(wxT("IRCClient::Entry: thread terminated at state=%d"), state);
+	return 0;
+      }
+      
       if (timer == 0)
       {
 	timer = 30;
@@ -246,6 +253,12 @@ wxThread::ExitCode IRCClient::Entry ()
       break;
 
     case 1:
+      if (terminateThread)
+      {
+	wxLogVerbose(wxT("IRCClient::Entry: thread terminated at state=%d"), state);
+	return 0;
+      }
+      
       if (timer == 0)
       {
 	sock = socket( PF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -426,17 +439,87 @@ wxThread::ExitCode IRCClient::Entry ()
       break;
 
     case 4:
+      {
+	recvQ = new IRCMessageQueue();
+	sendQ = new IRCMessageQueue();
+
+	recv = new IRCReceiver(sock, recvQ);
+	recv->startWork();
+
+	proto->setNetworkReady(true);
+	state = 5;
+	timer = 0;
+
+      }
+      break;
+
+
+    case 5:
+      if (terminateThread)
+      {
+	state = 6;
+      }
+      else
+      {
+
+	if (recvQ -> isEOF())
+	{
+	  timer = 0;
+	  state = 6;
+	}
+	else if (proto -> processQueues(recvQ, sendQ) == false)
+	{
+	  timer = 0;
+	  state = 6;
+	}
+
+	while ((state == 5) && sendQ->messageAvailable())
+	{
+	  IRCMessage * m = sendQ -> getMessage();
+
+	  wxString out;
+
+	  m -> composeMessage ( out );
+
+	  wxLogVerbose(wxT("msg: ") + out);
+
+	  delete m;
+	}
+      }
+      break;
+
+    case 6:
+      {
+
+	proto->setNetworkReady(false);
+	recv->stopWork();
+
+	delete recv;
+	delete recvQ;
+	delete sendQ;
+
+#if defined(__WINDOWS__)
+	closesocket(sock);
+#else
+	close(sock);
+#endif
+
+	if (terminateThread) // request to end the thread
+	{
+	  wxLogVerbose(wxT("IRCClient::Entry: thread terminated at state=%d"), state);
+	  return 0;
+	}
+
+	timer = 30;
+	state = 0;  // reconnect to IRC server
+      }
       break;
 
     }
 
-
-
     wxThread::Sleep(500);
 
   }
-
- // recv->stopWork();
 
   return 0;
 }

@@ -19,52 +19,38 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-
-#if !defined(_IRCCLIENT_H)
-#define _IRCCLIENT_H
-
-#include "IRCReceiver.h"
-#include "IRCMessageQueue.h"
-#include "IRCProtocol.h"
+#if !defined(_IRCPROTOCOL_H)
+#define _IRCPROTOCOL_H
 
 #include <wx/wx.h>
 
+#include "IRCMessageQueue.h"
 
-class IRCClient : public wxThreadHelper
+class IRCProtocol
 {
   public:
+    IRCProtocol ( const wxString& callsign, const wxString& password, const wxString& channel );
 
-  IRCClient( const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password );
+    ~IRCProtocol();
 
-  ~IRCClient();
+    void setNetworkReady( bool state );
 
-
-  bool startWork();
-
-  void stopWork();
-
-
-  protected:
-
-  virtual wxThread::ExitCode Entry();
-
-
+    bool processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sendQ );
 
   private:
+    void chooseNewNick();
 
-  char host_name[100];
-  unsigned int port;
-  wxString callsign;
-  wxString password;
+    wxArrayString nicks;
+    wxString password;
+    wxString channel;
+    wxString name;
+    wxString currentNick;
 
-  bool terminateThread;
-
-  IRCReceiver * recv;
-  IRCMessageQueue * recvQ;
-  IRCMessageQueue * sendQ;
-  IRCProtocol * proto;
+    int state;
+    int timer;
+    int pingTimer;
 
 };
 
 
-#endif 
+#endif

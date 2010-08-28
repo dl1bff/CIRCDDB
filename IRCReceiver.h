@@ -26,11 +26,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <wx/wx.h>
 
+#include "IRCMessageQueue.h"
+
+
 class IRCReceiver : public wxThreadHelper
 {
   public:
 
-  IRCReceiver();
+  IRCReceiver(int sock, IRCMessageQueue * q);
 
   ~IRCReceiver();
 
@@ -50,6 +53,8 @@ class IRCReceiver : public wxThreadHelper
 
 
   bool terminateThread;
+  int sock;
+  IRCMessageQueue * recvQ;
 
 };
 

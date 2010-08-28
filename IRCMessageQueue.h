@@ -19,52 +19,59 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-
-#if !defined(_IRCCLIENT_H)
-#define _IRCCLIENT_H
-
-#include "IRCReceiver.h"
-#include "IRCMessageQueue.h"
-#include "IRCProtocol.h"
+#if !defined(_IRCMESSAGEQUEUE_H)
+#define _IRCMESSAGEQUEUE_H
 
 #include <wx/wx.h>
 
+#include "IRCMessage.h"
 
-class IRCClient : public wxThreadHelper
+
+class IRCMessageQueueItem
 {
   public:
+    IRCMessageQueueItem( IRCMessage * m )
+    {
+      msg = m;
+    }
 
-  IRCClient( const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password );
+    ~IRCMessageQueueItem()
+    {
+    }
+    
+    IRCMessage * msg;
 
-  ~IRCClient();
-
-
-  bool startWork();
-
-  void stopWork();
-
-
-  protected:
-
-  virtual wxThread::ExitCode Entry();
-
-
-
-  private:
-
-  char host_name[100];
-  unsigned int port;
-  wxString callsign;
-  wxString password;
-
-  bool terminateThread;
-
-  IRCReceiver * recv;
-  IRCMessageQueue * recvQ;
-  IRCMessageQueue * sendQ;
-  IRCProtocol * proto;
-
+    IRCMessageQueueItem * prev;
+    IRCMessageQueueItem * next;
 };
 
 
-#endif 
+class IRCMessageQueue
+{
+  public:
+    IRCMessageQueue();
+
+    ~IRCMessageQueue();
+
+    bool isEOF();
+
+    void signalEOF();
+
+    bool messageAvailable();
+
+    IRCMessage * getMessage();
+
+    void putMessage ( IRCMessage * m );
+
+  private:
+
+    bool eof;
+
+    IRCMessageQueueItem * first;
+    IRCMessageQueueItem * last;
+
+    wxMutex accessMutex;
+    
+};
+
+#endif
