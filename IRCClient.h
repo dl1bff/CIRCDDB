@@ -35,7 +35,7 @@ class IRCClient : public wxThreadHelper
 {
   public:
 
-  IRCClient( IRCApplication * app,
+  IRCClient( IRCApplication * app, const wxString& update_channel,
       const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password );
 
   ~IRCClient();

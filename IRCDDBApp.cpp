@@ -47,11 +47,10 @@ class IRCDDBAppUserObject
     counter ++;
   }
 
-  private:
-
   static unsigned int counter;
 };
 
+unsigned int IRCDDBAppUserObject::counter = 0;
 
 
 WX_DECLARE_STRING_HASH_MAP( IRCDDBAppUserObject, IRCDDBAppUserMap );
@@ -62,6 +61,7 @@ struct IRCDDBAppPrivate
   IRCMessageQueue * sendQ;
 
   IRCDDBAppUserMap user;
+  wxMutex userMapMutex;
 
   wxString currentServer;
   wxString myNick;
@@ -105,6 +105,8 @@ IRCDDBApp::~IRCDDBApp()
 	
 void IRCDDBApp::userJoin (const wxString& nick, const wxString& name, const wxString& host)
 {
+  wxMutexLocker lock(d->userMapMutex);
+
   IRCDDBAppUserObject u( nick, name, host );
 		
   d->user[nick] = u;
@@ -112,10 +114,19 @@ void IRCDDBApp::userJoin (const wxString& nick, const wxString& name, const wxSt
 
 void IRCDDBApp::userLeave (const wxString& nick)
 {
+  wxMutexLocker lock(d->userMapMutex);
+
   d->user.erase(nick);
 
   if (d->currentServer.Len() > 0)
   {
+    IRCDDBAppUserMap::iterator i = d->user.find( nick );
+
+    if (i == d->user.end())
+    {
+      return;
+    }
+
     IRCDDBAppUserObject me = d->user[d->myNick];
 
     if (me.op == false)  
@@ -133,84 +144,58 @@ void IRCDDBApp::userLeave (const wxString& nick)
   }
 }
 
-	public void userListReset()
-	{
-		user = Collections.synchronizedMap( new HashMap<String,UserObject>() );
+void IRCDDBApp::userListReset()
+{
+  wxMutexLocker lock(d->userMapMutex);
 
-		if (extApp != null)
-		{
-			extApp.userListReset();
-		}
-	}
+  d->user.clear();
+}
 
-	public void setCurrentNick(String nick)
-	{
-		myNick = nick;
+void IRCDDBApp::setCurrentNick(const wxString& nick)
+{
+  d->myNick = nick;
+}
 
-		if (extApp != null)
-		{
-			extApp.setCurrentNick(nick);
-		}
-	}
+void IRCDDBApp::setTopic(const wxString& topic)
+{
+  d->channelTopic = topic;
+}
 
-	public void setTopic(String topic)
-	{
-		channelTopic = topic;
+bool IRCDDBApp::findServerUser()
+{
+  wxMutexLocker lock(d->userMapMutex);
 
-		if (extApp != null)
-		{
-			extApp.setTopic(topic);
-		}
-	}
+  bool found = false;
+
+  IRCDDBAppUserMap::iterator it;
+
+  for( it = d->user.begin(); it != d->user.end(); ++it )
+  {
+    wxString key = it->first;
+    IRCDDBAppUserObject u = it->second;
+
+    if (u.nick.StartsWith(wxT("s-")) && u.op && !d->myNick.IsSameAs(u.nick))
+    {
+      d->currentServer = u.nick;
+      found = true;
+      break;
+    }
+  }
+
+  return found;
+}
 	
-	
-	boolean findServerUser()
-	{
-		boolean found = false;
-		
-		Collection<UserObject> v = user.values();
-		
-		Iterator<UserObject> i = v.iterator();
-		
-		while (i.hasNext())
-		{
-			UserObject u = i.next();
-			
-			// System.out.println("LIST: " + u.nick + " " + u.op);
-			
-			if (u.nick.startsWith("s-") && u.op && !myNick.equals(u.nick))
-			{
-				currentServer = u.nick;
-				found = true;
-				if (extApp != null) 
-				{
-					extApp.setCurrentServerNick(currentServer);
-				}
-				break;
-			}
-		}
-		
-		return found;
-	}
-	
-	
-	public void userChanOp (String nick, boolean op)
-	{
-		UserObject u = user.get( nick );
-		
-		if (u != null)
-		{
-			// System.out.println("APP: op " + nick + " " + op);
-			if ((extApp != null) && (u.op != op))
-			{
-				extApp.userChanOp(nick, op);
-			}
+void IRCDDBApp::userChanOp (const wxString& nick, bool op)
+{
+  IRCDDBAppUserMap::iterator i = d->user.find( nick );
 
-			u.op = op;
-		}
-	}
+  if (i != d->user.end())
+  {
+    d->user[nick].op = op;
+  }
+}
 	
-
+/*
 	IRCDDBExtApp.UpdateResult processUpdate ( int tableID, Scanner s, String ircUser )
 	{
 		if (s.hasNext(datePattern))
@@ -254,36 +239,23 @@ void IRCDDBApp::userLeave (const wxString& nick)
 		return null;
 	}
 	 
-	void enablePublicUpdates()
-	{
-	  acceptPublicUpdates = true;
+ */
 
-	  for (int i = (numberOfTables-1); i >= 0; i--)
-	  {
-		while (publicUpdates[i].messageAvailable())
-		{
-			IRCMessage m = publicUpdates[i].getMessage();
+void IRCDDBApp::enablePublicUpdates()
+{
+  d->acceptPublicUpdates = true;
+}
 
-			String msg = m.params[1];
-
-                        Scanner s = new Scanner(msg);
-
-			processUpdate(i, s, null);
-		}
-	  }
-	}
-	
-	public void msgChannel (IRCMessage m)
-	{
-		// System.out.println("APP: chan");
-
+void IRCDDBApp::msgChannel (IRCMessage * m)
+{
 		
-		if (m.getPrefixNick().startsWith("s-"))  // server msg
-		{
-			int tableID = 0;
+  if (m->getPrefixNick().StartsWith(wxT("s-")) && (m->numParams >= 2))  // server msg
+  {
+    // int tableID = 0;
 
-			String msg = m.params[1];
+    wxString msg = m->params[1];
 			
+			/*
 			Scanner s = new Scanner(msg);
 
 			if (s.hasNext(tablePattern))
@@ -314,10 +286,12 @@ void IRCDDBApp::userLeave (const wxString& nick)
 					extApp.msgChannel( m );
 				}
 			}
-		}
-	}
+			*/
+  }
+}
 
-	private String getTableIDString( int tableID, boolean spaceBeforeNumber )
+/*
+static wxString getTableIDString( int tableID, boolean spaceBeforeNumber )
 	{
 	  if (tableID == 0)
 	  {
@@ -339,12 +313,15 @@ void IRCDDBApp::userLeave (const wxString& nick)
 	    return " TABLE_ID_OUT_OF_RANGE ";
 	  }
 	}
+	*/
+
+
 	
-	public void msgQuery (IRCMessage m)
-	{
-	
-		String msg = m.params[1];
+void IRCDDBApp::msgQuery (IRCMessage * m)
+{
+  wxString msg = m->params[1];
 		
+      /*
 		Scanner s = new Scanner(msg);
 		
 		String command;
@@ -643,26 +620,22 @@ void IRCDDBApp::userLeave (const wxString& nick)
 				extApp.msgQuery(m);
 			}
 		}
-	}
+
+		*/
+}
 	
 	
-	public synchronized void setSendQ( IRCMessageQueue s )
-	{
-		// System.out.println("APP: setQ " + s);
-		
-		sendQ = s;
-		
-		if (extApp != null)
-		{
-			extApp.setSendQ(s);
-		}
-	}
+void IRCDDBApp::setSendQ( IRCMessageQueue * s )
+{
+  d->sendQ = s;
+}
 	
-	public synchronized IRCMessageQueue getSendQ ()
-	{
-		return sendQ;
-	}
+IRCMessageQueue * IRCDDBApp::getSendQ()
+{
+  return d->sendQ;
+}
 	
+/*
 	
 	String getLastEntryTime(int tableID)
 	{
@@ -680,7 +653,10 @@ void IRCDDBApp::userLeave (const wxString& nick)
 		
 		return "DBERROR";
 	}
+
+	*/
 	
+	/*
 	
 	public void run()
 	{
@@ -932,7 +908,7 @@ void IRCDDBApp::userLeave (const wxString& nick)
 		}
 	}
 	
-
+*/
 
 
 

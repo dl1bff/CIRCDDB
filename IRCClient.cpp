@@ -153,7 +153,7 @@ static int getAllIPV4Addresses ( const char * name, unsigned short port,
 
 
 
-IRCClient::IRCClient( IRCApplication * app,
+IRCClient::IRCClient( IRCApplication * app, const wxString& update_channel,
     const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password )
 {
   strncpy(host_name, hostName.mb_str(), sizeof host_name);
@@ -165,7 +165,7 @@ IRCClient::IRCClient( IRCApplication * app,
 
   this -> app = app;
 
-  proto = new IRCProtocol ( app, callsign, password, wxT("#dstar") );
+  proto = new IRCProtocol ( app, callsign, password, update_channel );
 
   recvQ = NULL;
   sendQ = NULL;
@@ -500,10 +500,10 @@ wxThread::ExitCode IRCClient::Entry ()
 	      timer = 0;
 	      state = 6;
 	    }
-	    else
+/*	    else
 	    {
 	      wxLogVerbose(wxT("write %d bytes (") + out + wxT(")"), len );
-	    }
+	    } */
 	  }
 	  else
 	  {

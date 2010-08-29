@@ -40,9 +40,22 @@ class IRCDDBApp : public IRCApplication
 
     virtual void userLeave (const wxString& nick);
 
+    virtual void userChanOp (const wxString& nick, bool op);
+    virtual void userListReset();
+
+    virtual void msgChannel (IRCMessage * m);
+    virtual void msgQuery (IRCMessage * m);
+
+    virtual void setCurrentNick(const wxString& nick);
+    virtual void setTopic(const wxString& topic);
+
+    virtual void setSendQ( IRCMessageQueue * s );
+    virtual IRCMessageQueue * getSendQ ();
 
 
   private:
+    bool findServerUser();
+    void enablePublicUpdates();
     IRCDDBAppPrivate * d;
 };
 

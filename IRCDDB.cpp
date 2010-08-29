@@ -39,9 +39,11 @@ CIRCDDB::CIRCDDB(const wxString& hostName, unsigned int port,
     const wxString& callsign, const wxString& password) : d( new CIRCDDBPrivate )
 
 {
-  d->app = new IRCDDBApp();
+  wxString update_channel = wxT("#dstar");
 
-  d->client = new IRCClient( d->app, hostName, port, callsign, password );
+  d->app = new IRCDDBApp(update_channel);
+
+  d->client = new IRCClient( d->app, update_channel, hostName, port, callsign, password );
 }
 
 CIRCDDB::~CIRCDDB()
