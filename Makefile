@@ -18,9 +18,9 @@
 #
 
 
-CPPFLAGS=-Wall ` wx-config --cppflags base `
+CPPFLAGS=-g -DDEBUG_IRC -Wall ` wx-config --cppflags base `
 
-LDFLAGS=` wx-config --libs base ` 
+LDFLAGS=-g ` wx-config --libs base ` 
 
 
 L=libircddb.a
@@ -31,7 +31,7 @@ $L: $L(IRCDDB.o IRCClient.o IRCReceiver.o)
 
 test_lib: test_lib.o $L
 
-$L(IRCDDB.o): IRCDDB.h $L(IRCClient.o)
+$L(IRCDDB.o): IRCDDB.h $L(IRCClient.o) $L(IRCDDBApp.o)
 
 $L(IRCClient.o): IRCClient.h $L(IRCReceiver.o) $L(IRCProtocol.o)
 
@@ -39,11 +39,13 @@ $L(IRCReceiver.o): IRCReceiver.h $L(IRCMessageQueue.o)
 
 $L(IRCMessageQueue.o): IRCMessageQueue.h $L(IRCMessage.o)
 
-$L(IRCProtocol.o): IRCProtocol.h $L(IRCMessageQueue.o)
+$L(IRCProtocol.o): IRCProtocol.h IRCApplication.h $L(IRCMessageQueue.o)
 
 $L(IRCMessage.o): IRCMessage.h
 
+$L(IRCDDBApp.o): IRCDDBApp.h IRCApplication.h
 
+IRCApplication.h: IRCMessageQueue.h
 
 
 

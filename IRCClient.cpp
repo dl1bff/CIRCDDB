@@ -153,7 +153,8 @@ static int getAllIPV4Addresses ( const char * name, unsigned short port,
 
 
 
-IRCClient::IRCClient( const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password )
+IRCClient::IRCClient( IRCApplication * app,
+    const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password )
 {
   strncpy(host_name, hostName.mb_str(), sizeof host_name);
   host_name[(sizeof host_name) - 1] = 0;
@@ -162,7 +163,9 @@ IRCClient::IRCClient( const wxString& hostName, unsigned int port, const wxStrin
   this -> port = port;
   this -> password = password;
 
-  proto = new IRCProtocol ( callsign, password, wxT("#dstar") );
+  this -> app = app;
+
+  proto = new IRCProtocol ( app, callsign, password, wxT("#dstar") );
 
   recvQ = NULL;
   sendQ = NULL;
@@ -481,7 +484,34 @@ wxThread::ExitCode IRCClient::Entry ()
 
 	  m -> composeMessage ( out );
 
-	  wxLogVerbose(wxT("msg: ") + out);
+	  char buf[200];
+	  strncpy(buf, out.mb_str(wxConvUTF8), sizeof buf);
+	  buf[(sizeof buf) - 1] = 0;
+	  int len = strlen(buf);
+
+	  if (buf[len - 1] == 10)  // is there a NL char at the end?
+	  {
+	    int r = write(sock, buf, len);
+
+	    if (r != len)
+	    {
+	      wxLogVerbose(wxT("IRCClient::Entry: short write %d < %d"), r, len);
+
+	      timer = 0;
+	      state = 6;
+	    }
+	    else
+	    {
+	      wxLogVerbose(wxT("write %d bytes (") + out + wxT(")"), len );
+	    }
+	  }
+	  else
+	  {
+	      wxLogVerbose(wxT("IRCClient::Entry: no NL at end, len=%d"), len);
+
+	      timer = 0;
+	      state = 6;
+	  }
 
 	  delete m;
 	}
@@ -490,9 +520,16 @@ wxThread::ExitCode IRCClient::Entry ()
 
     case 6:
       {
+	if (app != NULL)
+	{
+	  app->setSendQ(NULL);
+	  app->userListReset();
+	}
 
 	proto->setNetworkReady(false);
 	recv->stopWork();
+
+	wxThread::Sleep(2000);
 
 	delete recv;
 	delete recvQ;

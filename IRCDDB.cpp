@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "IRCDDB.h"
 
 #include "IRCClient.h"
+#include "IRCDDBApp.h"
 
 #include <wx/wx.h>
 
@@ -30,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct CIRCDDBPrivate
 {
     IRCClient * client;
+    IRCDDBApp * app;
 };
 
 
@@ -37,8 +39,9 @@ CIRCDDB::CIRCDDB(const wxString& hostName, unsigned int port,
     const wxString& callsign, const wxString& password) : d( new CIRCDDBPrivate )
 
 {
-  d->client = new IRCClient( hostName, port, callsign, password );
+  d->app = new IRCDDBApp();
 
+  d->client = new IRCClient( d->app, hostName, port, callsign, password );
 }
 
 CIRCDDB::~CIRCDDB()

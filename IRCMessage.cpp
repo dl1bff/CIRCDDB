@@ -109,7 +109,39 @@ wxString& IRCMessage::getPrefixHost()
 
 void IRCMessage::composeMessage ( wxString& output )
 {
+#if defined(DEBUG_IRC)
+  wxString d = wxT("T [") + prefix + wxT("] [") + command + wxT("]");
+  for (int i=0; i < numParams; i++)
+  {
+    d.Append(wxT(" [") + params[i] + wxT("]") );
+  }
+  wxLogVerbose(d);
+#endif
 
+  wxString o;
+
+  if (prefix.Len() > 0)
+  {
+    o = wxT(":") + prefix + wxT(" ");
+  }
+
+  o.Append(command);
+
+  for (int i=0; i < numParams; i++)
+  {
+    if (i == (numParams - 1))
+    {
+      o.Append(wxT(" :") + params[i]);
+    }
+    else
+    {
+      o.Append(wxT(" ") + params[i]);
+    }
+  }
+
+  o.Append(wxT("\r\n"));
+
+  output = o;
 }
 
 /*

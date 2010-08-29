@@ -22,16 +22,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "IRCProtocol.h"
 
-IRCProtocol::IRCProtocol ( const wxString& callsign, const wxString& password, const wxString& channel )
+IRCProtocol::IRCProtocol ( IRCApplication * app,
+    const wxString& callsign, const wxString& password, const wxString& channel )
 {
   this -> password = password;
   this -> channel = channel;
+  this -> app = app;
 
   nicks.Add(callsign);
+
+  name = callsign;
 
   pingTimer = 60; // 30 seconds
   state = 0;
   timer = 0;
+
 
   chooseNewNick();
 }
@@ -73,23 +78,18 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
     timer --;
   }
 
-  while (recvQ.messageAvailable())
+  while (recvQ->messageAvailable())
   {
     IRCMessage * m = recvQ -> getMessage();
 
-    /*
-                        if (debug)
-                        {
-                                System.out.print("R [" + m.prefix + "]" );
-                                System.out.print(" [" + m.command +"]" );
-
-                                for (int i=0; i < m.numParams; i++)
-                                {
-                                        System.out.print(" [" + m.params[i] + "]" );
-                                }
-                                System.out.println();
-                        }
-    */
+#if defined(DEBUG_IRC)
+    wxString d = wxT("R [") + m->prefix + wxT("] [") + m->command + wxT("]");
+    for (int i=0; i < m->numParams; i++)
+    {
+      d.Append(wxT(" [") + m->params[i] + wxT("]") );
+    }
+    wxLogVerbose(d);
+#endif
 
     if (m->command.IsSameAs(wxT("004")))
     {
@@ -102,289 +102,301 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
     {
       IRCMessage * m2 = new IRCMessage();
       m2->command = wxT("PONG");
-      m2->numParams = 1;
-      m2->params.Add( m.params[0] );
+      if (m->params.GetCount() > 0)
+      {
+	m2->numParams = 1;
+	m2->params.Add( m->params[0] );
+      }
       sendQ -> putMessage(m2);
     }
-                        else if (m.command.equals("JOIN"))
-                        {
-                                if ((m.numParams >= 1) && m.params[0].equals(channel))
-                                {
-                                        if (m.getPrefixNick().equals(currentNick) && (state == 6))
-                                        {
-                                          if (debugChannel != null)
-                                          {
-                                            state = 7;  // next: join debug_channel
-                                          }
-                                          else
-                                          {
-                                            state = 10; // next: WHO *
-                                          }
-                                        }
-                                        else if (app != null)
-                                        {
-                                                app.userJoin( m.getPrefixNick(), m.getPrefixName(), m.getPrefixHost());
-                                        }
-                                }
+    else if (m->command.IsSameAs(wxT("JOIN")))
+    {
+      if ((m->numParams >= 1) && m->params[0].IsSameAs(channel))
+      {
+	if (m->getPrefixNick().IsSameAs(currentNick) && (state == 6))
+	{
+	  if (debugChannel.Len() > 0)
+	  {
+	    state = 7;  // next: join debug_channel
+	  }
+	  else
+	  {
+	    state = 10; // next: WHO *
+	  }
+	}
+	else if (app != NULL)
+	{
+		app->userJoin( m->getPrefixNick(), m->getPrefixName(), m->getPrefixHost());
+	}
+      }
 
-                             if ((m.numParams >= 1) && m.params[0].equals(debugChannel))
-                                {
-                                        if (m.getPrefixNick().equals(currentNick) && (state == 8))
-                                        {
-                                                state = 10; // next: WHO *
-                                        }
-                                }
-                        }
-                        else if (m.command.equals("PONG"))
-                        {
-                                if (state == 12)
-                                {
-                                        timer = pingTimer;
-                                        state = 11;
-                                }
-                        }
-                        else if (m.command.equals("PART"))
-                        {
-                                if ((m.numParams >= 1) && m.params[0].equals(channel))
-                                {
-                                        if (app != null)
-                                        {
-                                                app.userLeave( m.getPrefixNick() );
-                                        }
-                                }
-                        }
-                        else if (m.command.equals("KICK"))
-                        {
-                                if ((m.numParams >= 2) && m.params[0].equals(channel))
-                                {
-                                        if (m.params[1].equals(currentNick))
-                                        {
-                                                // i was kicked!!
-                                                return false;
-                                        }
-                                        else if (app != null)
-                                        {
-                                                app.userLeave( m.params[1] );
-                                        }
-                                }
-                        }
-                        else if (m.command.equals("QUIT"))
-                        {
-                                if (app != null)
-                                {
-                                        app.userLeave( m.getPrefixNick() );
-                                }
-                        }
-                        else if (m.command.equals("MODE"))
-                        {
-                                if ((m.numParams >= 3) && m.params[0].equals(channel))
-                                {
-                                        if (app != null)
-                                        {
-                                                if ( m.params[1].equals("+o") )
-                                                {
-                                                        app.userChanOp(m.params[2], true);
-                                                }
-                                                else if ( m.params[1].equals("-o") )
-                                                {
-                                                        app.userChanOp(m.params[2], false);
-                                                }
-                                        }
-                                }
-                        }
-                      else if (m.command.equals("PRIVMSG"))
-                        {
-                                if ((m.numParams == 2) && (app != null))
-                                {
-                                        if (m.params[0].equals(channel))
-                                        {
-                                                app.msgChannel(m);
-                                        }
-                                        else if (m.params[0].equals(currentNick))
-                                        {
-                                                app.msgQuery(m);
-                                        }
-                                }
-                        }
-                        else if (m.command.equals("352"))  // WHO list
-                        {
-                                if ((m.numParams >= 7) && m.params[0].equals(currentNick)
-                                        && m.params[1].equals(channel))
-                                {
-                                        if (app != null)
-                                        {
-                                                app.userJoin( m.params[5], m.params[2], m.params[3]);
-                                                app.userChanOp ( m.params[5], m.params[6].equals("H@"));
-                                        }
-                                }
-                        }
-                        else if (m.command.equals("433"))  // nick collision
-                        {
-                                if (state == 2)
-                                {
-                                        state = 3;  // nick collision, choose new nick
-                                        timer = 10; // wait 5 seconds..
-                                }
-                        }
-                        else if (m.command.equals("332") ||
-                                        m.command.equals("TOPIC"))  // topic
-                        {
-                                if ((m.numParams == 2) && (app != null) &&
-                                        m.params[0].equals(channel) )
+      if ((m->numParams >= 1) && m->params[0].IsSameAs(debugChannel))
+      {
+	if (m->getPrefixNick().IsSameAs(currentNick) && (state == 8))
+	{
+	  state = 10; // next: WHO *
+	}
+      }
+    }
+    else if (m->command.IsSameAs(wxT("PONG")))
+    {
+      if (state == 12)
+      {
+	timer = pingTimer;
+	state = 11;
+      }
+    }
+    else if (m->command.IsSameAs(wxT("PART")))
+    {
+      if ((m->numParams >= 1) && m->params[0].IsSameAs(channel))
+      {
+	if (app != NULL)
+	{
+	  app->userLeave( m->getPrefixNick() );
+	}
+      }
+    }
+    else if (m->command.IsSameAs(wxT("KICK")))
+    {
+      if ((m->numParams >= 2) && m->params[0].IsSameAs(channel))
+      {
+	if (m->params[1].IsSameAs(currentNick))
+	{
+		// i was kicked!!
+		delete m;
+		return false;
+	}
+	else if (app != NULL)
+	{
+	  app->userLeave( m->params[1] );
+	}
+      }
+    }
+    else if (m->command.IsSameAs(wxT("QUIT")))
+    {
+      if (app != NULL)
+      {
+	app->userLeave( m->getPrefixNick() );
+      }
+    }
+    else if (m->command.IsSameAs(wxT("MODE")))
+    {
+      if ((m->numParams >= 3) && m->params[0].IsSameAs(channel))
+      {
+	if (app != NULL)
+	{
+	  unsigned int i;
+	  wxString mode = m->params[1];
 
-                                {
-                                        app.setTopic(m.params[1]);
-                                }
-                        }
-                }
+	  for (i = 1; (i < mode.Len()) && ((unsigned int) m->numParams >= (i+2)); i++)
+	  {
+	    if ( mode[i] == wxT('o') )
+	    {
+	      if ( mode[0] == wxT('+') )
+	      {
+		      app->userChanOp(m->params[i+1], true);
+	      }
+	      else if ( mode[0] == wxT('-') )
+	      {
+		      app->userChanOp(m->params[i+1], false);
+	      }
+	    }
+	  } // for
+	}
+      }
+    }
+    else if (m->command.IsSameAs(wxT("PRIVMSG")))
+    {
+      if ((m->numParams == 2) && (app != NULL))
+      {
+	if (m->params[0].IsSameAs(channel))
+	{
+	  app->msgChannel(m);
+	}
+	else if (m->params[0].IsSameAs(currentNick))
+	{
+	  app->msgQuery(m);
+	}
+      }
+    }
+    else if (m->command.IsSameAs(wxT("352")))  // WHO list
+    {
+      if ((m->numParams >= 7) && m->params[0].IsSameAs(currentNick)
+	      && m->params[1].IsSameAs(channel))
+      {
+	if (app != NULL)
+	{
+	  app->userJoin( m->params[5], m->params[2], m->params[3]);
+	  app->userChanOp ( m->params[5], m->params[6].IsSameAs(wxT("H@")));
+	}
+      }
+    }
+    else if (m->command.IsSameAs(wxT("433")))  // nick collision
+    {
+      if (state == 2)
+      {
+	state = 3;  // nick collision, choose new nick
+	timer = 10; // wait 5 seconds..
+      }
+    }
+    else if (m->command.IsSameAs(wxT("332")) ||
+                  m->command.IsSameAs(wxT("TOPIC")))  // topic
+    {
+      if ((m->numParams == 2) && (app != NULL) &&
+	      m->params[0].IsSameAs(channel) )
+      {
+	      app->setTopic(m->params[1]);
+      }
+    }
 
-                IRCMessage m;
+    delete m;
+  }
 
-                switch (state)
-                {
-                case 1:
-                        m = new IRCMessage();
-                        m.command = "PASS";
-                        m.numParams = 1;
-                        m.params[0] = password;
-                        sendQ.putMessage(m);
+  IRCMessage * m;
 
-                        m = new IRCMessage();
-                        m.command = "NICK";
-                        m.numParams = 1;
-                        m.params[0] = currentNick;
-                        sendQ.putMessage(m);
+  switch (state)
+  {
+  case 1:
+    m = new IRCMessage();
+    m->command = wxT("PASS");
+    m->numParams = 1;
+    m->params.Add(password);
+    sendQ->putMessage(m);
 
-                        timer = 10;  // wait for possible nick collision message
-                        state = 2;
-                        break;
+    m = new IRCMessage();
+    m->command = wxT("NICK");
+    m->numParams = 1;
+    m->params.Add(currentNick);
+    sendQ->putMessage(m);
 
-                case 2:
-                        if (timer == 0)
-                        {
-                                m = new IRCMessage();
-                                m.command = "USER";
-                                m.numParams = 4;
-                                m.params[0] = name;
-                                m.params[1] = "0";
-                                m.params[2] = "*";
-                                m.params[3] = version;
-                                sendQ.putMessage(m);
+    timer = 10;  // wait for possible nick collision message
+    state = 2;
+    break;
 
-                                timer = 30;
-                                state = 4; // wait for login message
-                        }
-                        break;
+  case 2:
+    if (timer == 0)
+    {
+      m = new IRCMessage();
+      m->command = wxT("USER");
+      m->numParams = 4;
+      m->params.Add(name);
+      m->params.Add(wxT("0"));
+      m->params.Add(wxT("*"));
+      m->params.Add(wxT("CIRCDDB:v0.0.4"));
+      sendQ->putMessage(m);
 
-                case 3:
-                        if (timer == 0)
-                        {
-                                chooseNewNick();
-                                m = new IRCMessage();
-                                m.command = "NICK";
-                                m.numParams = 1;
-                                m.params[0] = currentNick;
-                                sendQ.putMessage(m);
+      timer = 30;
+      state = 4; // wait for login message
+    }
+    break;
 
-                                timer = 10;  // wait for possible nick collision message
-                                state = 2;
-                        }
-                        break;
+  case 3:
+    if (timer == 0)
+    {
+      chooseNewNick();
+      m = new IRCMessage();
+      m->command = wxT("NICK");
+      m->numParams = 1;
+      m->params.Add(currentNick);
+      sendQ->putMessage(m);
 
-                case 4:
-                        if (timer == 0)
-                        {
-                                // no login message received -> disconnect
-                                return false;
-                        }
-                        break;
+      timer = 10;  // wait for possible nick collision message
+      state = 2;
+    }
+    break;
 
-               case 5:
-                        m = new IRCMessage();
-                        m.command = "JOIN";
-                        m.numParams = 1;
-                        m.params[0] = channel;
-                        sendQ.putMessage(m);
+  case 4:
+    if (timer == 0)
+    {
+      // no login message received -> disconnect
+      return false;
+    }
+    break;
 
-                        timer = 30;
-                        state = 6; // wait for join message
-                        break;
+  case 5:
+    m = new IRCMessage();
+    m->command = wxT("JOIN");
+    m->numParams = 1;
+    m->params.Add(channel);
+    sendQ->putMessage(m);
 
-                case 6:
-                        if (timer == 0)
-                        {
-                                // no join message received -> disconnect
-                                return false;
-                        }
-                        break;
+    timer = 30;
+    state = 6; // wait for join message
+    break;
 
-                case 7:
-                        if (debugChannel == null)
-                        {
-                          return false; // this state cannot be processed if there is no debug_channel
-                        }
+  case 6:
+    if (timer == 0)
+    {
+      // no join message received -> disconnect
+      return false;
+    }
+    break;
 
-                        m = new IRCMessage();
-                        m.command = "JOIN";
-                        m.numParams = 1;
-                        m.params[0] = debugChannel;
-                        sendQ.putMessage(m);
+  case 7:
+    if (debugChannel.Len() == 0)
+    {
+      return false; // this state cannot be processed if there is no debug_channel
+    }
 
-                        timer = 30;
-                        state = 8; // wait for join message
-                        break;
+    m = new IRCMessage();
+    m->command = wxT("JOIN");
+    m->numParams = 1;
+    m->params.Add(debugChannel);
+    sendQ->putMessage(m);
 
-                case 8:
-                        if (timer == 0)
-                        {
-                                // no join message received -> disconnect
-                                return false;
-                        }
-                        break;
+    timer = 30;
+    state = 8; // wait for join message
+    break;
 
-               case 10:
-                        m = new IRCMessage();
-                        m.command = "WHO";
-                        m.numParams = 2;
-                        m.params[0] = channel;
-                        m.params[1] = "*";
-                        sendQ.putMessage(m);
+  case 8:
+    if (timer == 0)
+    {
+      // no join message received -> disconnect
+      return false;
+    }
+    break;
 
-                        timer = pingTimer;
-                        state = 11; // wait for timer and then send ping
+  case 10:
+    m = new IRCMessage();
+    m->command = wxT("WHO");
+    m->numParams = 2;
+    m->params.Add(channel);
+    m->params.Add(wxT("*"));
+    sendQ->putMessage(m);
 
-                        if (app != null)
-                        {
-                                app.setSendQ(sendQ);  // this switches the application on
-                        }
-                        break;
+    timer = pingTimer;
+    state = 11; // wait for timer and then send ping
 
-                case 11:
-                        if (timer == 0)
-                        {
-                                m = new IRCMessage();
-                                m.command = "PING";
-                                m.numParams = 1;
-                                m.params[0] = currentNick;
-                                sendQ.putMessage(m);
+    if (app != NULL)
+    {
+      app->setSendQ(sendQ);  // this switches the application on
+    }
+    break;
 
-                                timer = pingTimer;
-                                state = 12; // wait for pong
-                        }
-                        break;
+  case 11:
+    if (timer == 0)
+    {
+      m = new IRCMessage();
+      m->command = wxT("PING");
+      m->numParams = 1;
+      m->params.Add(currentNick);
+      sendQ->putMessage(m);
 
-                case 12:
-                        if (timer == 0)
-                        {
-                                // no pong message received -> disconnect
-                                return false;
-                        }
-                        break;
-                }
+      timer = pingTimer;
+      state = 12; // wait for pong
+    }
+    break;
 
-                return true;
+  case 12:
+    if (timer == 0)
+    {
+      // no pong message received -> disconnect
+      return false;
+    }
+    break;
+  }
 
-
+  return true;
 }
 
 

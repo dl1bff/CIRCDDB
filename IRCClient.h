@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "IRCReceiver.h"
 #include "IRCMessageQueue.h"
 #include "IRCProtocol.h"
+#include "IRCApplication.h"
 
 #include <wx/wx.h>
 
@@ -34,7 +35,8 @@ class IRCClient : public wxThreadHelper
 {
   public:
 
-  IRCClient( const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password );
+  IRCClient( IRCApplication * app,
+      const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password );
 
   ~IRCClient();
 
@@ -63,6 +65,8 @@ class IRCClient : public wxThreadHelper
   IRCMessageQueue * recvQ;
   IRCMessageQueue * sendQ;
   IRCProtocol * proto;
+
+  IRCApplication * app;
 
 };
 

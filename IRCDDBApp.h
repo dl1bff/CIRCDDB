@@ -19,44 +19,31 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#if !defined(_IRCPROTOCOL_H)
-#define _IRCPROTOCOL_H
+#if !defined(_IRCDDBAPP_H)
+#define _IRCDDBAPP_H
+
+
+#include "IRCApplication.h"
 
 #include <wx/wx.h>
 
-#include "IRCMessageQueue.h"
-#include "IRCApplication.h"
+struct IRCDDBAppPrivate;
 
-
-class IRCProtocol
+class IRCDDBApp : public IRCApplication
 {
   public:
-    IRCProtocol ( IRCApplication * app,
-      const wxString& callsign, const wxString& password, const wxString& channel );
+    IRCDDBApp(const wxString& update_channel);
 
-    ~IRCProtocol();
+    virtual ~IRCDDBApp();
 
-    void setNetworkReady( bool state );
+    virtual void userJoin (const wxString& nick, const wxString& name, const wxString& host);
 
-    bool processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sendQ );
+    virtual void userLeave (const wxString& nick);
+
+
 
   private:
-    void chooseNewNick();
-
-    wxArrayString nicks;
-    wxString password;
-    wxString channel;
-    wxString name;
-    wxString currentNick;
-
-    int state;
-    int timer;
-    int pingTimer;
-
-    wxString debugChannel;
-
-    IRCApplication * app;
-
+    IRCDDBAppPrivate * d;
 };
 
 

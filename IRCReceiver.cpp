@@ -132,9 +132,9 @@ wxThread::ExitCode IRCReceiver::Entry ()
   while ((!GetThread()->TestDestroy()) && (!terminateThread))
   {
 
-    wxLogVerbose(wxT("IRCReceiver: tick"));
+    // wxLogVerbose(wxT("IRCReceiver: tick"));
 
-    char buf[150];
+    char buf[200];
     int r = doRead( sock, buf, sizeof buf );
 
     if (r < 0)

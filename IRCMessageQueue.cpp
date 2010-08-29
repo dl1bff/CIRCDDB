@@ -98,7 +98,7 @@ void IRCMessageQueue::putMessage( IRCMessage * m )
 {
   wxMutexLocker lock(accessMutex);
 
-  wxLogVerbose(wxT("IRCMessageQueue::putMessage"));
+  // wxLogVerbose(wxT("IRCMessageQueue::putMessage"));
 
   IRCMessageQueueItem * k = new IRCMessageQueueItem(m);
 
