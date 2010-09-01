@@ -51,17 +51,6 @@ static int getAllIPV4Addresses ( const char * name, unsigned short port,
     unsigned int * num, struct sockaddr_in * addr, unsigned int max_addr )
 {
 
-#if defined(__WINDOWS__)
-    // Initialize Winsock
-  WSADATA wsaData;
-  int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-    if (iResult != 0) {
-        wxLogError(wxT("WSAStartup failed: %d"), iResult);
-        return 1;
-    }
-#endif
-
-
   struct addrinfo hints;
   struct addrinfo * res;
 

@@ -35,6 +35,16 @@ int main (int argc, char *argv[])
   wxLogStderr log;
   log.SetVerbose();
 
+#if defined(__WINDOWS__)
+     // Initialize Winsock
+  WSADATA wsaData;
+  int iResult = ::WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (iResult != 0)
+  {
+    wxLogError(wxT("WSAStartup failed: %d"), iResult);
+    return 1;
+  }
+#endif
 
   if (init.IsOk())
   {
@@ -68,6 +78,10 @@ int main (int argc, char *argv[])
   ii.close();
 
   wxLogVerbose(wxT("main: after close"));
+
+#if defined(__WINDOWS__)
+  ::WSACleanup();
+#endif
 
   return 0;
 }
