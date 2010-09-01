@@ -72,7 +72,7 @@ int main (int argc, char *argv[])
   ii.open();
 
   wxLogVerbose(wxT("main program running"));
-  wxSleep(1800); // half an hour
+  wxSleep(600); // 10 minutes
   wxLogVerbose(wxT("main program running"));
 
   ii.close();
