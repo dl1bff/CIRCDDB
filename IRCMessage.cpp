@@ -115,6 +115,8 @@ void IRCMessage::composeMessage ( wxString& output )
   {
     d.Append(wxT(" [") + params[i] + wxT("]") );
   }
+  d.Replace(wxT("%"), wxT("%%"), true);
+  d.Replace(wxT("\\"), wxT("\\\\"), true);
   wxLogVerbose(d);
 #endif
 

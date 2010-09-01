@@ -19,6 +19,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#if defined(WIN32)
+
+#define WIN32_LEAN_AND_MEAN
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#else
+
+#include <sys/types.h>
+#include <sys/socket.h>
+
+#endif
+
 
 
 #include "IRCReceiver.h"
@@ -99,7 +113,7 @@ static int doRead( int sock, char * buf, int buf_size )
     
     if (FD_ISSET(sock, &rdset))
     {
-      res = read(sock, buf, buf_size);
+      res = recv(sock, buf, buf_size, 0);
 
       if (res < 0)
       {

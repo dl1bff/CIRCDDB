@@ -88,6 +88,8 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
     {
       d.Append(wxT(" [") + m->params[i] + wxT("]") );
     }
+    d.Replace(wxT("%"), wxT("%%"), true);
+    d.Replace(wxT("\\"), wxT("\\\\"), true);
     wxLogVerbose(d);
 #endif
 

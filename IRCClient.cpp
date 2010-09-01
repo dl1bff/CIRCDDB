@@ -20,20 +20,26 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
+#if defined(WIN32)
+
+#define WIN32_LEAN_AND_MEAN
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#else
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+#endif
+
 
 #include "IRCClient.h"
 
 #include <wx/wx.h>
 
-
-#if defined(__WINDOWS__)
-#include <winsock.h>
-
-#include "getaddrinfo.h"
-
-#else
-#include <netdb.h>
-#endif
 
 
 #include <fcntl.h>
@@ -491,7 +497,7 @@ wxThread::ExitCode IRCClient::Entry ()
 
 	  if (buf[len - 1] == 10)  // is there a NL char at the end?
 	  {
-	    int r = write(sock, buf, len);
+	    int r = send(sock, buf, len, 0);
 
 	    if (r != len)
 	    {
