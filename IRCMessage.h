@@ -33,6 +33,8 @@ class IRCMessage
 
     IRCMessage( const wxString& toNick, const wxString& msg );
 
+    IRCMessage( const wxString& command );
+
     ~IRCMessage();
 
 
@@ -48,6 +50,8 @@ class IRCMessage
     wxString& getPrefixHost();
 
     void composeMessage ( wxString& output );
+
+    void addParam( const wxString& p );
 
   private:
 

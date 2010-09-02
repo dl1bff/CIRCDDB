@@ -31,7 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <wx/wx.h>
 
 
-class IRCClient : public wxThreadHelper
+class IRCClient : public wxThread
 {
   public:
 

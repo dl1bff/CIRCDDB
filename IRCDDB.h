@@ -53,7 +53,7 @@ public:
 	bool sendHeard(const wxString& userCallsign, const wxString& repeaterCallsign);
 
 	// Send query for a gateway/reflector, a false return implies a network error
-	bool findGateway(const wxString& gatewayCallsign);
+	bool findGateway(const wxString& repeaterCallsign);
 
 	// Send query for a user, a false return implies a network error
 	bool findUser(const wxString& userCallsign);
@@ -65,13 +65,14 @@ public:
 
 	// Get a gateway message, as a result of IDRT_GATEWAY returned from getMessageType()
 	// A false return implies a network error
-	bool receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol);
+	bool receiveGateway(wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol);
 
 	// Get a user message, as a result of IDRT_USER returned from getMessageType()
 	// A false return implies a network error
-	bool receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& address);
+	bool receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address);
 
 	void close();		// Implictely kills any threads in the IRC code
+
 
 private:
 	struct CIRCDDBPrivate * const d;

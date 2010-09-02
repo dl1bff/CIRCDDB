@@ -40,6 +40,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <wx/wx.h>
 
 IRCReceiver::IRCReceiver(int sock, IRCMessageQueue * q )
+  : wxThread(wxTHREAD_JOINABLE)
 {
   this->sock = sock;
 
@@ -61,7 +62,7 @@ bool IRCReceiver::startWork()
 
   terminateThread = false;
 
-  if (GetThread()->Run() != wxTHREAD_NO_ERROR)
+  if (Run() != wxTHREAD_NO_ERROR)
   {
     wxLogError(wxT("IRCReceiver::startWork: Could not run the worker thread!"));
     return false;
@@ -74,11 +75,7 @@ void IRCReceiver::stopWork()
 {
   terminateThread = true;
 
-  if (GetThread() &&  GetThread()->IsRunning())
-  {
-    GetThread()->Wait();
-  }
-
+  Wait();
 }
 
 static int doRead( int sock, char * buf, int buf_size )
@@ -143,7 +140,7 @@ wxThread::ExitCode IRCReceiver::Entry ()
   int i;
   int state = 0;
 
-  while ((!GetThread()->TestDestroy()) && (!terminateThread))
+  while (!terminateThread)
   {
 
     // wxLogVerbose(wxT("IRCReceiver: tick"));

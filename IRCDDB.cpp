@@ -49,6 +49,7 @@ CIRCDDB::CIRCDDB(const wxString& hostName, unsigned int port,
 CIRCDDB::~CIRCDDB()
 {
   delete d->client;
+  delete d->app;
   delete d;
 }
 
@@ -57,7 +58,7 @@ CIRCDDB::~CIRCDDB()
 bool CIRCDDB::open()
 {
   wxLogVerbose(wxT("start"));
-  return d->client -> startWork();
+  return d->client -> startWork()   &&   d->app->startWork();
 }
 
 // The following three functions don't block waiting for a reply, they just send the data
@@ -69,7 +70,7 @@ bool CIRCDDB::sendHeard(const wxString& userCallsign, const wxString& repeaterCa
 }
 
 // Send query for a gateway/reflector, a false return implies a network error
-bool CIRCDDB::findGateway(const wxString& gatewayCallsign)
+bool CIRCDDB::findGateway(const wxString& repeaterCallsign)
 {
   return true;
 }
@@ -90,14 +91,14 @@ IRCDDB_RESPONSE_TYPE CIRCDDB::getMessageType()
 
 // Get a gateway message, as a result of IDRT_GATEWAY returned from getMessageType()
 // A false return implies a network error
-bool CIRCDDB::receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol)
+bool CIRCDDB::receiveGateway(wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol)
 {
   return true;
 }
 
 // Get a user message, as a result of IDRT_USER returned from getMessageType()
 // A false return implies a network error
-bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& address)
+bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address)
 {
   return true;
 }
@@ -105,5 +106,6 @@ bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wx
 void CIRCDDB::close()		// Implictely kills any threads in the IRC code
 {
   d->client -> stopWork();
+  d->app -> stopWork();
 }
 

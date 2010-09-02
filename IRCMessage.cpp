@@ -38,8 +38,22 @@ IRCMessage::IRCMessage ( const wxString& toNick, const wxString& msg )
   prefixParsed = false;
 }
 
+IRCMessage::IRCMessage ( const wxString& cmd )
+{
+  command = cmd;
+  numParams = 0;
+  prefixParsed = false;
+}
+
 IRCMessage::~IRCMessage()
 {
+}
+
+
+void IRCMessage::addParam( const wxString& p )
+{
+  params.Add( p );
+  numParams = params.GetCount();
 }
 
 	

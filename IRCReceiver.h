@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "IRCMessageQueue.h"
 
 
-class IRCReceiver : public wxThreadHelper
+class IRCReceiver : public wxThread
 {
   public:
 

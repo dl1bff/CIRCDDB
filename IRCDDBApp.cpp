@@ -74,10 +74,13 @@ struct IRCDDBAppPrivate
 
   bool acceptPublicUpdates;
 
+  bool terminateThread;
 };
 
 	
-IRCDDBApp::IRCDDBApp( const wxString& u_chan ) : d(new IRCDDBAppPrivate)
+IRCDDBApp::IRCDDBApp( const wxString& u_chan )
+  : wxThread(wxTHREAD_JOINABLE),
+    d(new IRCDDBAppPrivate)
 {
 
   d->sendQ = NULL;
@@ -90,6 +93,8 @@ IRCDDBApp::IRCDDBApp( const wxString& u_chan ) : d(new IRCDDBAppPrivate)
   d->myNick = wxT("none");
 		
   d->updateChannel = u_chan;
+
+  d->terminateThread = false;
 		
 }
 
@@ -102,6 +107,33 @@ IRCDDBApp::~IRCDDBApp()
   delete d;
 }
 
+bool IRCDDBApp::startWork()
+{
+
+  if (Create() != wxTHREAD_NO_ERROR)
+  {
+    wxLogError(wxT("IRCClient::startWork: Could not create the worker thread!"));
+    return false;
+  }
+
+  d->terminateThread = false;
+
+  if (Run() != wxTHREAD_NO_ERROR)
+  {
+    wxLogError(wxT("IRCClient::startWork: Could not run the worker thread!"));
+    return false;
+  }
+
+  return true;
+}
+
+void IRCDDBApp::stopWork()
+{
+    d->terminateThread = true;
+
+    Wait();
+}
+
 	
 void IRCDDBApp::userJoin (const wxString& nick, const wxString& name, const wxString& host)
 {
@@ -110,6 +142,8 @@ void IRCDDBApp::userJoin (const wxString& nick, const wxString& name, const wxSt
   IRCDDBAppUserObject u( nick, name, host );
 		
   d->user[nick] = u;
+
+  wxLogVerbose(wxT("user %d"), u.usn );
 }
 
 void IRCDDBApp::userLeave (const wxString& nick)
@@ -187,6 +221,8 @@ bool IRCDDBApp::findServerUser()
 	
 void IRCDDBApp::userChanOp (const wxString& nick, bool op)
 {
+  wxMutexLocker lock(d->userMapMutex);
+
   IRCDDBAppUserMap::iterator i = d->user.find( nick );
 
   if (i != d->user.end())
@@ -290,30 +326,30 @@ void IRCDDBApp::msgChannel (IRCMessage * m)
   }
 }
 
-/*
-static wxString getTableIDString( int tableID, boolean spaceBeforeNumber )
-	{
-	  if (tableID == 0)
-	  {
-	    return "";
-	  }
-	  else if ((tableID > 0) && (tableID < numberOfTables))
-	  {
-	    if (spaceBeforeNumber)
-	    {
-	      return " " + tableID;
-	    }
-	    else
-	    {	
-	      return tableID + " ";
-	    }
-	  }
-	  else
-	  {
-	    return " TABLE_ID_OUT_OF_RANGE ";
-	  }
-	}
-	*/
+static int numberOfTables = 2;
+
+static wxString getTableIDString( int tableID, bool spaceBeforeNumber )
+{
+  if (tableID == 0)
+  {
+    return wxT("");
+  }
+  else if ((tableID > 0) && (tableID < numberOfTables))
+  {
+    if (spaceBeforeNumber)
+    {
+      return wxString::Format(wxT(" %d"),tableID);
+    }
+    else
+    {	
+      return wxString::Format(wxT("%d "),tableID);
+    }
+  }
+  else
+  {
+    return wxT(" TABLE_ID_OUT_OF_RANGE ");
+  }
+}
 
 
 	
@@ -635,281 +671,192 @@ IRCMessageQueue * IRCDDBApp::getSendQ()
   return d->sendQ;
 }
 	
-/*
 	
-	String getLastEntryTime(int tableID)
-	{
+static wxString getLastEntryTime(int tableID)
+{
 
-		if (extApp != null)
-		{
+  if (tableID == 1)
+  {
+    return wxT("2000-01-01 12:00:00");
+  }
 
-			Date d = extApp.getLastEntryDate(tableID);
+  return wxT("DBERROR");
+}
 
-			if (d != null)
-			{
-				return parseDateFormat.format( d );
-			}
-		}
+
+static bool needsDatabaseUpdate( int tableID )
+{
+  return (tableID == 1);
+}
+	
+	
+wxThread::ExitCode IRCDDBApp::Entry()
+{
+
+  int sendlistTableID = 0;
 		
-		return "DBERROR";
-	}
+  while (!d->terminateThread)
+  {
 
-	*/
-	
-	/*
-	
-	public void run()
+    if (d->timer > 0)
+    {
+      d->timer --;
+    }
+			
+    switch(d->state)
+    {
+    case 0:  // wait for network to start
+					
+      if (getSendQ() != NULL)
+      {
+	      d->state = 1;
+      }
+      break;
+				
+    case 1:
+      // connect to db
+      d->state = 2;
+      d->timer = 200;
+      break;
+			
+    case 2:   // choose server
+      wxLogVerbose(wxT("IRCDDBApp: state=2 choose new 's-'-user"));
+      if (getSendQ() == NULL)
+      {
+	d->state = 10;
+      }
+      else
+      {	
+	if (findServerUser())
 	{
+	  sendlistTableID = numberOfTables;
 
-		int dumpUserDBTimer = 60;
-		int sendlistTableID = 0;
-		
-		while (true)
-		{
-			
-			if (timer > 0)
-			{
-				timer --;
-			}
-			
-			// System.out.println("state " + state);
-			
-			
-			switch(state)
-			{
-			case 0:  // wait for network to start
-					
-				if (getSendQ() != null)
-				{
-					state = 1;
-				}
-				break;
-				
-			case 1:
-			  // connect to db
-			  state = 2;
-			  timer = 200;
-			  break;
-			
-			case 2:   // choose server
-			  Dbg.println(Dbg.DBG1, "IRCDDBApp: state=2 choose new 's-'-user");
-				if (getSendQ() == null)
-				{
-					state = 10;
-				}
-				else
-				{	
-					if (findServerUser())
-					{
-						sendlistTableID = numberOfTables;
-
-						if (extApp != null)
-						{
-						  state = 3; // next: send "SENDLIST"
-						}	
-						else
-						{
-						  state = 6; // next: enablePublicUpdates
-						}
-					}
-					else if (timer == 0)
-					{
-						state = 10;
-						
-						IRCMessage m = new IRCMessage();
-						m.command = "QUIT";
-						m.numParams = 1;
-						m.params[0] = "no op user with 's-' found.";
-						
-						IRCMessageQueue q = getSendQ();
-						if (q != null)
-						{
-							q.putMessage(m);
-						}
-					}
-				}
-				break;
-				
-			case 3:
-				if (getSendQ() == null)
-				{
-				  state = 10; // disconnect DB
-				}
-				else
-				{
-				  sendlistTableID --;
-				  if (sendlistTableID < 0)
-				  {
-				    state = 6; // end of sendlist
-				  }
-				  else
-				  {
-				    Dbg.println(Dbg.DBG1, "IRCDDBApp: state=3 tableID="+sendlistTableID);
-				    state = 4; // send "SENDLIST"
-				    timer = 900; // 15 minutes max for update
-				  }
-				}
-				break;
-
-			case 4:
-				if (getSendQ() == null)
-				{
-				  state = 10; // disconnect DB
-				}
-				else
-				{
-				    if (extApp.needsDatabaseUpdate(sendlistTableID))
-				    {
-				      IRCMessage m = new IRCMessage();
-				      m.command = "PRIVMSG";
-				      m.numParams = 2;
-				      m.params[0] = currentServer;
-				      m.params[1] = "SENDLIST" + getTableIDString(sendlistTableID, true) 
-				       + " " + getLastEntryTime(sendlistTableID);
-				      
-				      IRCMessageQueue q = getSendQ();
-				      if (q != null)
-				      {
-					      q.putMessage(m);
-				      }
-
-				      state = 5; // wait for answers
-				    }
-				    else
-				    {
-				      state = 3; // don't send SENDLIST for this table, go to next table
-				    }
-				}
-				break;
-
-			case 5: // sendlist processing
-				if (getSendQ() == null)
-				{
-					state = 10; // disconnect DB
-				}
-				else if (timer == 0)
-				{
-					state = 10;
-					
-					IRCMessage m = new IRCMessage();
-					m.command = "QUIT";
-					m.numParams = 1;
-					m.params[0] = "timeout SENDLIST";
-					
-					IRCMessageQueue q = getSendQ();
-					if (q != null)
-					{
-					q.putMessage(m);
-					}
-				}
-				break;
-
-			case 6:
-				if (getSendQ() == null)
-				{
-					state = 10; // disconnect DB
-				}
-				else
-				{
-				  UserObject me = user.get(myNick);
-				  UserObject other = user.get(currentServer);
-
-				  if ((me != null) && (currentServer != null) && !me.op && other.op
-					  && other.nick.startsWith("s-") && me.nick.startsWith("s-") )
-				  {
-					  IRCMessage m2 = new IRCMessage();
-					  m2.command = "PRIVMSG";
-					  m2.numParams = 2;
-					  m2.params[0] = other.nick;
-					  m2.params[1] = "OP_BEG";
-					  
-					  IRCMessageQueue q = getSendQ();
-					  if (q != null)
-					  {
-						  q.putMessage(m2);
-					  }
-				  }
-
-				  Dbg.println(Dbg.DBG1, "IRCDDBApp: state=6 enablePublcUpdates");
-				  enablePublicUpdates();
-				  state = 7;
-				}
-				break;
-				
-			
-			case 7: // standby state after initialization
-				if (getSendQ() == null)
-				{
-					state = 10; // disconnect DB
-				}
-				break;
-				
-			case 10:
-				// disconnect db
-				state = 0;
-				timer = 0;
-				acceptPublicUpdates = false;
-				break;
-			
-			case 11:
-				if (timer == 0)
-				{
-					System.exit(0);
-				}
-				break;
-			}
-
-			
-			
-			try
-			{
-				Thread.sleep(1000);
-			}
-			catch ( InterruptedException e )
-			{
-				Dbg.println(Dbg.WARN, "sleep interrupted " + e);
-			}
-
-
-			if (!dumpUserDBFileName.equals("none"))
-			{
-			if (dumpUserDBTimer <= 0)
-			{
-				dumpUserDBTimer = 300;
-
-				try
-				{
-					PrintWriter p = new PrintWriter(
-						new FileOutputStream(dumpUserDBFileName));
-
-					Collection<UserObject> c = user.values();
-
-					for (UserObject o : c)
-					{
-						p.println(o.nick + " " + o.name +
-							" " + o.host + " " + o.op);
-					}
-
-					p.close();
-
-
-				}
-				catch (IOException e)
-				{
-					Dbg.println(Dbg.WARN, "dumpDb failed " + e);
-				}
-
-			}
-			else
-			{
-				dumpUserDBTimer --;
-			}
-			} // if (!dumpUserDBFileName.equals("none"))
-		}
+	  d->state = 3; // next: send "SENDLIST"
 	}
-	
-*/
+	else if (d->timer == 0)
+	{
+	  d->state = 10;
+	  IRCMessage * m = new IRCMessage(wxT("QUIT"));
 
+	  m->addParam(wxT("no op user with 's-' found."));
+						
+	  IRCMessageQueue * q = getSendQ();
+	  if (q != NULL)
+	  {
+	    q->putMessage(m);
+	  }
+	}
+      }
+      break;
+				
+    case 3:
+      if (getSendQ() == NULL)
+      {
+	d->state = 10; // disconnect DB
+      }
+      else
+      {
+	sendlistTableID --;
+	if (sendlistTableID < 0)
+	{
+	  d->state = 6; // end of sendlist
+	}
+	else
+	{
+	  wxLogVerbose(wxT("IRCDDBApp: state=3 tableID=%d"), sendlistTableID);
+	  d->state = 4; // send "SENDLIST"
+	  d->timer = 900; // 15 minutes max for update
+	}
+      }
+      break;
+
+    case 4:
+      if (getSendQ() == NULL)
+      {
+	d->state = 10; // disconnect DB
+      }
+      else
+      {
+	if (needsDatabaseUpdate(sendlistTableID))
+	{
+	  IRCMessage * m = new IRCMessage(d->currentServer, 
+			wxT("SENDLIST") + getTableIDString(sendlistTableID, true) 
+			 + wxT(" ") + getLastEntryTime(sendlistTableID) );
+
+	  IRCMessageQueue * q = getSendQ();
+	  if (q != NULL)
+	  {
+	    q->putMessage(m);
+	  }
+
+	  d->state = 5; // wait for answers
+	}
+	else
+	{
+	  d->state = 3; // don't send SENDLIST for this table, go to next table
+	}
+      }
+      break;
+
+    case 5: // sendlist processing
+      if (getSendQ() == NULL)
+      {
+	d->state = 10; // disconnect DB
+      }
+      else if (d->timer == 0)
+      {
+	d->state = 10; // disconnect DB
+	  IRCMessage * m = new IRCMessage(wxT("QUIT"));
+
+	  m->addParam(wxT("timeout SENDLIST"));
+						
+	  IRCMessageQueue * q = getSendQ();
+	  if (q != NULL)
+	  {
+	    q->putMessage(m);
+	  }
+					
+      }
+      break;
+
+    case 6:
+      if (getSendQ() == NULL)
+      {
+	d->state = 10; // disconnect DB
+      }
+      else
+      {
+	wxLogVerbose(wxT( "IRCDDBApp: state=6 enablePublcUpdates"));
+	enablePublicUpdates();
+	d->state = 7;
+      }
+      break;
+				
+			
+    case 7: // standby state after initialization
+      if (getSendQ() == NULL)
+      {
+	d->state = 10; // disconnect DB
+      }
+      break;
+				
+    case 10:
+      // disconnect db
+      d->state = 0;
+      d->timer = 0;
+      d->acceptPublicUpdates = false;
+      break;
+			
+    }
+
+    wxThread::Sleep(1000);
+
+			
+			
+
+  } // while
+} // Entry()
+	
 
 
 

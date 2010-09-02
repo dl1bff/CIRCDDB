@@ -29,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 struct IRCDDBAppPrivate;
 
-class IRCDDBApp : public IRCApplication
+class IRCDDBApp : public IRCApplication, wxThread
 {
   public:
     IRCDDBApp(const wxString& update_channel);
@@ -52,6 +52,11 @@ class IRCDDBApp : public IRCApplication
     virtual void setSendQ( IRCMessageQueue * s );
     virtual IRCMessageQueue * getSendQ ();
 
+    bool startWork();
+    void stopWork();
+
+  protected:
+    virtual wxThread::ExitCode Entry();
 
   private:
     bool findServerUser();

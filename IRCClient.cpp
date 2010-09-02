@@ -146,13 +146,26 @@ static int getAllIPV4Addresses ( const char * name, unsigned short port,
 }
 
 
+static void safeStringCopy (char * dest, const char * src, unsigned int buf_size)
+{
+  unsigned int i = 0;
+
+  while (i < (buf_size - 1)  &&  (src[i] != 0))
+  {
+    dest[i] = src[i];
+    i++;
+  }
+
+  dest[i] = 0;
+}
+
 
 
 IRCClient::IRCClient( IRCApplication * app, const wxString& update_channel,
     const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password )
+     : wxThread(wxTHREAD_JOINABLE)
 {
-  strncpy(host_name, hostName.mb_str(), sizeof host_name);
-  host_name[(sizeof host_name) - 1] = 0;
+  safeStringCopy(host_name, hostName.mb_str(), sizeof host_name);
 
   this -> callsign = callsign;
   this -> port = port;
@@ -170,6 +183,7 @@ IRCClient::IRCClient( IRCApplication * app, const wxString& update_channel,
 
 IRCClient::~IRCClient()
 {
+  delete proto;
 }
 
 bool IRCClient::startWork()
@@ -183,7 +197,7 @@ bool IRCClient::startWork()
 
   terminateThread = false;
 
-  if (GetThread()->Run() != wxTHREAD_NO_ERROR)
+  if (Run() != wxTHREAD_NO_ERROR)
   {
     wxLogError(wxT("IRCClient::startWork: Could not run the worker thread!"));
     return false;
@@ -196,11 +210,7 @@ void IRCClient::stopWork()
 {
   terminateThread = true;
 
-  if (GetThread() &&  GetThread()->IsRunning())
-  {
-    GetThread()->Wait();
-  }
-
+  Wait();
 }
 
 wxThread::ExitCode IRCClient::Entry ()
@@ -216,7 +226,7 @@ wxThread::ExitCode IRCClient::Entry ()
   int sock;
   unsigned int currentAddr;
 
-  while (!GetThread()->TestDestroy())
+  while (true)
   {
 
     if (timer > 0)
@@ -480,8 +490,7 @@ wxThread::ExitCode IRCClient::Entry ()
 	  m -> composeMessage ( out );
 
 	  char buf[200];
-	  strncpy(buf, out.mb_str(wxConvUTF8), sizeof buf);
-	  buf[(sizeof buf) - 1] = 0;
+	  safeStringCopy(buf, out.mb_str(wxConvUTF8), sizeof buf);
 	  int len = strlen(buf);
 
 	  if (buf[len - 1] == 10)  // is there a NL char at the end?
