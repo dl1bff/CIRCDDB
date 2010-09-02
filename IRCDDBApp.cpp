@@ -855,6 +855,8 @@ wxThread::ExitCode IRCDDBApp::Entry()
 			
 
   } // while
+
+  return 0;
 } // Entry()
 	
 
