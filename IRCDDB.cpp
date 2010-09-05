@@ -131,6 +131,8 @@ bool CIRCDDB::receiveRepeater(wxString& repeaterCallsign, wxString& gatewayCalls
   gatewayCallsign = m->getParam(1);
   address = m->getParam(2);
 
+  delete m;
+
   return true;
 }
 
@@ -168,6 +170,8 @@ bool CIRCDDB::receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR
 
   gatewayCallsign = m->getParam(0);
   address = m->getParam(1);
+
+  delete m;
 
   return true;
 }
@@ -208,6 +212,8 @@ bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wx
   repeaterCallsign = m->getParam(1);
   gatewayCallsign = m->getParam(2);
   address = m->getParam(3);
+
+  delete m;
 
   return true;
 }
