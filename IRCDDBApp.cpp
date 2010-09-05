@@ -21,6 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "IRCDDBApp.h"
 
+#include <wx/datetime.h>
+#include <wx/regex.h>
+#include <wx/tokenzr.h>
 
 class IRCDDBAppUserObject
 {
@@ -56,8 +59,50 @@ unsigned int IRCDDBAppUserObject::counter = 0;
 WX_DECLARE_STRING_HASH_MAP( IRCDDBAppUserObject, IRCDDBAppUserMap );
 
 
-struct IRCDDBAppPrivate
+class IRCDDBAppRptrObject
 {
+  public:
+
+  wxString arearp_cs;
+  wxDateTime lastChanged;
+  wxString zonerp_cs;
+
+  IRCDDBAppRptrObject ()
+  {
+  }
+
+  IRCDDBAppRptrObject (wxDateTime& dt, wxString& repeaterCallsign, wxString& gatewayCallsign)
+  {
+    arearp_cs = repeaterCallsign;
+    lastChanged = dt;
+    zonerp_cs = gatewayCallsign;
+
+    if (dt.IsLaterThan(maxTime))
+    {
+      maxTime = dt;
+    }
+  }
+
+  static wxDateTime maxTime;
+}; 
+
+wxDateTime IRCDDBAppRptrObject::maxTime((time_t) 950000000);  // February 2000
+
+
+WX_DECLARE_STRING_HASH_MAP( IRCDDBAppRptrObject, IRCDDBAppRptrMap );
+
+
+class IRCDDBAppPrivate
+{
+  public:
+
+  IRCDDBAppPrivate()
+  : tablePattern(wxT("^[0-9]$")),
+    datePattern(wxT("^20[0-9][0-9]-((1[0-2])|(0[1-9]))-((3[01])|([12][0-9])|(0[1-9]))$")),
+    timePattern(wxT("^((2[0-3])|([01][0-9])):[0-5][0-9]:[0-5][0-9]$")),
+    dbPattern(wxT("^[0-9A-Z_]{8}$"))
+  {}
+
   IRCMessageQueue * sendQ;
 
   IRCDDBAppUserMap user;
@@ -65,6 +110,11 @@ struct IRCDDBAppPrivate
 
   wxString currentServer;
   wxString myNick;
+
+  wxRegEx tablePattern;
+  wxRegEx datePattern;
+  wxRegEx timePattern;
+  wxRegEx dbPattern;
 
   int state;
   int timer;
@@ -75,6 +125,11 @@ struct IRCDDBAppPrivate
   bool acceptPublicUpdates;
 
   bool terminateThread;
+
+  IRCDDBAppRptrMap rptrMap;
+  wxMutex rptrMapMutex;
+
+  IRCMessageQueue replyQ;
 };
 
 	
@@ -106,6 +161,42 @@ IRCDDBApp::~IRCDDBApp()
   }
   delete d;
 }
+
+IRCDDB_RESPONSE_TYPE IRCDDBApp::getReplyMessageType()
+{
+  IRCMessage * m = d->replyQ.peekFirst();
+  if (m == NULL)
+  {
+    return IDRT_NONE;
+  }
+
+  wxString msgType = m->getCommand();
+
+  if (msgType.IsSameAs(wxT("IDRT_USER")))
+  {
+    return IDRT_USER;
+  }
+  else if (msgType.IsSameAs(wxT("IDRT_REPEATER")))
+  {
+    return IDRT_REPEATER;
+  }
+  else if (msgType.IsSameAs(wxT("IDRT_GATEWAY")))
+  {
+    return IDRT_GATEWAY;
+  }
+
+  wxLogError(wxT("IRCDDBApp::getMessageType: unknown msg type"));
+
+  return IDRT_NONE;
+}
+
+
+IRCMessage *  IRCDDBApp::getReplyMessage()
+{
+  return d->replyQ.getMessage();
+}
+
+
 
 bool IRCDDBApp::startWork()
 {
@@ -143,7 +234,29 @@ void IRCDDBApp::userJoin (const wxString& nick, const wxString& name, const wxSt
 		
   d->user[nick] = u;
 
-  wxLogVerbose(wxT("user %d"), u.usn );
+  if (d->acceptPublicUpdates)
+  {
+    int hyphenPos = nick.Find(wxT('-'));
+
+    if ((hyphenPos >= 4) && (hyphenPos <= 6))
+    {
+      wxString gatewayCallsign = nick.Mid(0, hyphenPos).Upper();
+
+      while (gatewayCallsign.Length() < 7)
+      {
+	gatewayCallsign.Append(wxT(' '));
+      }
+
+      gatewayCallsign.Append(wxT('G'));
+
+      IRCMessage * m2 = new IRCMessage(wxT( "IDRT_GATEWAY"));
+      m2->addParam(gatewayCallsign);
+      m2->addParam(host);
+      d->replyQ.putMessage(m2);
+    }
+  }
+
+  // wxLogVerbose(wxT("user %d"), u.usn );
 }
 
 void IRCDDBApp::userLeave (const wxString& nick)
@@ -231,102 +344,217 @@ void IRCDDBApp::userChanOp (const wxString& nick, bool op)
   }
 }
 	
-/*
-	IRCDDBExtApp.UpdateResult processUpdate ( int tableID, Scanner s, String ircUser )
-	{
-		if (s.hasNext(datePattern))
-		{
-			String d = s.next(datePattern);
-			
-			if (s.hasNext(timePattern))
-			{
-				String t = s.next(timePattern);
-				
-				
-				Date dbDate = null;
-
-				try
-				{
-					dbDate = parseDateFormat.parse(d + " " + t);
-				}
-				catch (java.text.ParseException e)
-				{
-					dbDate = null;
-				}
-					
-				if ((dbDate != null) && s.hasNext(keyPattern[tableID]))
-				{
-					String key = s.next(keyPattern[tableID]);
-					
-					
-					if (s.hasNext(valuePattern[tableID]))
-					{
-						String value = s.next(valuePattern[tableID]);
-
-						if (extApp != null)
-						{
-							return extApp.dbUpdate( tableID, dbDate, key, value, ircUser );
-						}
-					}
-				}
-			}
-		}
-		
-		return null;
-	}
-	 
- */
 
 void IRCDDBApp::enablePublicUpdates()
 {
   d->acceptPublicUpdates = true;
 }
 
+static const int numberOfTables = 2;
+
+
+
+
+
+wxString IRCDDBApp::getIPAddress(wxString& zonerp_cs)
+{
+  wxString gw = zonerp_cs;
+
+  gw.Replace(wxT("_"), wxT(" "));
+  gw.LowerCase();
+
+  unsigned int max_usn = 0;
+  wxString ipAddr;
+
+  int j;
+
+  for (j=1; j <= 4; j++)
+  {
+    wxString ircUser = gw.Strip() + wxString::Format(wxT("-%d"), j);
+
+    // wxLogVerbose(ircUser);
+
+    IRCDDBAppUserMap::iterator i = d->user.find( ircUser );
+
+    if (i != d->user.end())
+    {
+      IRCDDBAppUserObject o = d->user[ ircUser ];
+
+      if (o.usn > max_usn)
+      {
+	max_usn = o.usn;
+	ipAddr = o.host;
+      }
+    }
+  }
+
+  return ipAddr;
+}
+
+
+
 void IRCDDBApp::msgChannel (IRCMessage * m)
 {
-		
   if (m->getPrefixNick().StartsWith(wxT("s-")) && (m->numParams >= 2))  // server msg
   {
-    // int tableID = 0;
-
-    wxString msg = m->params[1];
-			
-			/*
-			Scanner s = new Scanner(msg);
-
-			if (s.hasNext(tablePattern))
-			{
-			  tableID = s.nextInt();
-			  if ((tableID < 0) || (tableID >= numberOfTables))
-			  {
-			    Dbg.println(Dbg.INFO, "invalid table ID " + tableID);
-			    return;
-			  }
-			}
-			
-			if (s.hasNext(datePattern))
-			{
-				if (acceptPublicUpdates)
-				{
-					processUpdate(tableID, s, null); 
-				}
-				else
-				{
-					publicUpdates[tableID].putMessage(m);
-				}
-			}
-			else
-			{
-				if (extApp != null)
-				{
-					extApp.msgChannel( m );
-				}
-			}
-			*/
+    doUpdate(m->params[1]);
   }
 }
 
-static int numberOfTables = 2;
+
+void IRCDDBApp::doUpdate ( wxString& msg )
+{
+    int tableID = 0;
+
+    wxStringTokenizer tkz(msg);
+
+    if (!tkz.HasMoreTokens()) 
+    {
+      return;  // no text in message
+    }
+
+    wxString tk = tkz.GetNextToken();
+
+
+    if (d->tablePattern.Matches(tk))
+    {
+      long i;
+
+      if (tk.ToLong(&i))
+      {
+	tableID = i;
+	if ((tableID < 0) || (tableID >= numberOfTables))
+	{
+	  wxLogVerbose(wxT("invalid table ID %d"), tableID);
+	  return;
+	}
+      }
+      else
+      {
+	return; // not a valid number
+      }
+
+      if (!tkz.HasMoreTokens()) 
+      {
+	return;  // received nothing but the tableID
+      }
+
+      tk = tkz.GetNextToken();
+    }
+
+    if (d->datePattern.Matches(tk))
+    {
+      if (!tkz.HasMoreTokens()) 
+      {
+	return;  // nothing after date string
+      }
+
+      wxString timeToken = tkz.GetNextToken();
+
+      if (! d->timePattern.Matches(timeToken))
+      {
+	return; // no time string after date string
+      }
+
+      wxDateTime dt;
+
+      if (dt.ParseFormat(tk + wxT(" ") + timeToken, wxT("%Y-%m-%d %H:%M:%S")) == NULL)
+      {
+	return; // date+time parsing failed
+      }
+
+      if ((tableID == 0) || (tableID == 1))
+      {
+	if (!tkz.HasMoreTokens())
+	{
+	  return;  // nothing after time string
+	}
+
+	wxString key = tkz.GetNextToken();
+
+	if (! d->dbPattern.Matches(key))
+	{
+	  return; // no valid key
+	}
+
+	if (!tkz.HasMoreTokens())
+	{
+	  return;  // nothing after time string
+	}
+
+	wxString value = tkz.GetNextToken();
+
+	if (! d->dbPattern.Matches(value))
+	{
+	  return; // no valid key
+	}
+
+	//wxLogVerbose(wxT("TABLE %d ") + key + wxT(" ") + value, tableID );
+
+
+	if (tableID == 1)
+	{
+	  wxMutexLocker lock(d->rptrMapMutex);
+
+	  IRCDDBAppRptrObject newRptr(dt, key, value);
+
+	  d->rptrMap[key] = newRptr;
+
+	  if (d->acceptPublicUpdates)
+	  {
+	    wxString arearp_cs = key;
+	    wxString zonerp_cs = value;
+
+	    arearp_cs.Replace(wxT("_"), wxT(" "));
+	    zonerp_cs.Replace(wxT("_"), wxT(" "));
+	    zonerp_cs.SetChar(7, wxT('G'));
+
+	    IRCMessage * m2 = new IRCMessage(wxT("IDRT_REPEATER"));
+	    m2->addParam(arearp_cs);
+	    m2->addParam(zonerp_cs);
+	    m2->addParam(getIPAddress(value));
+	    d->replyQ.putMessage(m2);
+	  }
+	}
+	else if ((tableID == 0) && d->acceptPublicUpdates)
+	{
+	  wxMutexLocker lock(d->rptrMapMutex);
+
+	  wxString userCallsign = key;
+	  wxString arearp_cs = value;
+	  wxString zonerp_cs;
+	  wxString ip_addr;
+
+	  userCallsign.Replace(wxT("_"), wxT(" "));
+	  arearp_cs.Replace(wxT("_"), wxT(" "));
+
+	  IRCDDBAppRptrMap::iterator i = d->rptrMap.find( value );
+
+	  if (i != d->rptrMap.end())
+	  {
+	    IRCDDBAppRptrObject o = d->rptrMap[value];
+	    zonerp_cs = o.zonerp_cs;
+	    zonerp_cs.Replace(wxT("_"), wxT(" "));
+	    zonerp_cs.SetChar(7, wxT('G'));
+
+	    ip_addr = getIPAddress(o.zonerp_cs);
+	  }
+
+	  IRCMessage * m2 = new IRCMessage(wxT("IDRT_USER"));
+	  m2->addParam(userCallsign);
+	  m2->addParam(arearp_cs);
+	  m2->addParam(zonerp_cs);
+	  m2->addParam(ip_addr);
+	  d->replyQ.putMessage(m2);
+
+	}
+
+
+      }
+    }
+
+}
+
 
 static wxString getTableIDString( int tableID, bool spaceBeforeNumber )
 {
@@ -352,312 +580,44 @@ static wxString getTableIDString( int tableID, bool spaceBeforeNumber )
 }
 
 
-	
 void IRCDDBApp::msgQuery (IRCMessage * m)
 {
-  wxString msg = m->params[1];
-		
-      /*
-		Scanner s = new Scanner(msg);
-		
-		String command;
-		
-		if (s.hasNext())
-		{
-			command = s.next();
-		}
-		else
-		{
-			return; // no command
-		}
 
-		int tableID = 0;
+  if (m->getPrefixNick().StartsWith(wxT("s-")) && (m->numParams >= 2))  // server msg
+  {
+    wxString msg = m->params[1];
+    wxStringTokenizer tkz(msg);
 
-		if (s.hasNext(tablePattern))
-		{
-		  tableID = s.nextInt();
-		  if ((tableID < 0) || (tableID >= numberOfTables))
-		  {
-		    Dbg.println(Dbg.WARN, "invalid table ID " + tableID);
-		    return;
-		  }
-		}
-		
-		if (command.equals("UPDATE"))
-		{	
-			UserObject other = user.get(m.getPrefixNick()); // nick of other user
-			
-			if (s.hasNext(datePattern)  &&
-				(other != null))
-			{
-				IRCDDBExtApp.UpdateResult result = processUpdate(tableID, s, other.nick);
-				
-				if (result != null)
-				{
-					boolean sendUpdate = false;
-					
-					if (result.keyWasNew)
-					{
-						sendUpdate = true;
-					}
-					else
-					{
+    if (!tkz.HasMoreTokens()) 
+    {
+      return;  // no text in message
+    }
 
-						if (result.newObj.value.equals(result.oldObj.value)) // value is the same
-						{
-							long newMillis = result.newObj.modTime.getTime();
-							long oldMillis = result.oldObj.modTime.getTime();
-							
-							if (newMillis > (oldMillis + 2400000))  // update max. every 40 min
-							{
-								sendUpdate = true;
-							}
-						}
-						else
-						{
-							sendUpdate = true;  // value has changed, send update via channel
-						}
-				
-					}
+    wxString cmd = tkz.GetNextToken();
 
-					UserObject me = user.get(myNick); 
-					
-					if ((me != null) && me.op && sendUpdate)  // send only if i am operator
-					{
-				
-						IRCMessage m2 = new IRCMessage();
-						m2.command = "PRIVMSG";
-						m2.numParams = 2;
-						m2.params[0] = updateChannel;
-						m2.params[1] = getTableIDString(tableID, false) + 
-						      parseDateFormat.format(result.newObj.modTime) + " " +
-							result.newObj.key + " " + result.newObj.value + "  (from: " + m.getPrefixNick() + ")";
-						
-						IRCMessageQueue q = getSendQ();
-						if (q != null)
-						{
-							q.putMessage(m2);
-						}
-					}
-
-				     if (debugChannel != null)
-				     {
-				       IRCMessage m2 = new IRCMessage();
-				       m2.command = "PRIVMSG";
-				       m2.numParams = 2;
-				       m2.params[0] = debugChannel;
-				       m2.params[1] = m.getPrefixNick() + ": UPDATE OK: " + msg;
-
-				       IRCMessageQueue q = getSendQ();
-				       if (q != null)
-				       {
-					  q.putMessage(m2);
-				       }
-				     }
-				}
-				else
-				{
-				   if (debugChannel != null)
-				   {
-				     IRCMessage m2 = new IRCMessage();
-				     m2.command = "PRIVMSG";
-				     m2.numParams = 2;
-				     m2.params[0] = debugChannel;
-				     m2.params[1] = m.getPrefixNick() + ": UPDATE ERROR: " + msg;
-
-				     IRCMessageQueue q = getSendQ();
-				     if (q != null)
-				     {
-					q.putMessage(m2);
-				     }
-				   }
-
-				}
-			}
-			
-			
-	
-		}
-		else if (command.equals("SENDLIST"))
-		{
-		
-			String answer = "LIST_END";
-			
-			if (s.hasNext(datePattern))
-			{
-				String d = s.next(datePattern);
-				
-				if (s.hasNext(timePattern))
-				{
-					String t = s.next(timePattern);
-					
-					
-					Date dbDate = null;
-
-					try
-					{
-						dbDate = parseDateFormat.parse(d + " " + t);
-					}
-					catch (java.text.ParseException e)
-					{
-						dbDate = null;
-					}
-						
-					if ((dbDate != null) && (extApp != null))
-					{
-						final int NUM_ENTRIES = 30;
-
-						LinkedList<IRCDDBExtApp.DatabaseObject> l = 
-							extApp.getDatabaseObjects( tableID, dbDate, NUM_ENTRIES );
-
-						int count = 0;
-				
-						if (l != null)
-						{
-						  for (IRCDDBExtApp.DatabaseObject o : l)
-						  {
-						    IRCMessage m3 = new IRCMessage(
-							  m.getPrefixNick(),
-							  "UPDATE" + getTableIDString(tableID, true) +
-							    " " + parseDateFormat.format(o.modTime) + " "
-							     + o.key + " " + o.value	);
-					  
-						    IRCMessageQueue q = getSendQ();
-						    if (q != null)
-						    {
-						      q.putMessage(m3);
-						    }
-								  
-						    count ++;
-						  }
-						}
-
-						if (count > NUM_ENTRIES)
-						{
-							answer = "LIST_MORE";
-						}
-					}
-				}
-			}
-			
-			IRCMessage m2 = new IRCMessage();
-			m2.command = "PRIVMSG";
-			m2.numParams = 2;
-			m2.params[0] = m.getPrefixNick();
-			m2.params[1] = answer;
-			
-			IRCMessageQueue q = getSendQ();
-			if (q != null)
-			{
-				q.putMessage(m2);
-			}
-		}
-		else if (command.equals("LIST_END"))
-		{
-		    if (state == 5) // if in sendlist processing state
-		    {
-		      state = 3;  // get next table
-		    }
-		}
-		else if (command.equals("LIST_MORE"))
-		{
-		    if (state == 5) // if in sendlist processing state
-		    {
-		      state = 4;  // send next SENDLIST
-		    }
-		}
-		else if (command.equals("OP_BEG"))
-		{
-			UserObject me = user.get(myNick); 
-			UserObject other = user.get(m.getPrefixNick()); // nick of other user
-
-			if ((me != null) && (other != null) && me.op && !other.op
-				&& other.nick.startsWith("s-") && me.nick.startsWith("s-") )
-			{
-				IRCMessage m2 = new IRCMessage();
-				m2.command = "MODE";
-				m2.numParams = 3;
-				m2.params[0] = updateChannel;
-				m2.params[1] = "+o";
-				m2.params[2] = other.nick;
-				
-				IRCMessageQueue q = getSendQ();
-				if (q != null)
-				{
-					q.putMessage(m2);
-				}
-			}
-		}
-		else if (command.equals("QUIT_NOW"))
-		{
-			UserObject other = user.get(m.getPrefixNick()); // nick of other user
-
-			if ((other != null) && other.op
-                                && other.nick.startsWith("u-"))
-                        {
-
-				IRCMessage m2 = new IRCMessage();
-				m2.command = "QUIT";
-				m2.numParams = 1;
-				m2.params[0] = "QUIT_NOW sent by "+other.nick;
-
-				IRCMessageQueue q = getSendQ();
-				if (q != null)
-				{
-					q.putMessage(m2);
-				}
-
-				timer = 3;
-				state = 11;  // exit
-			}
-		}
-		else if (command.equals("SHOW_PROPERTIES"))
-		{
-		  UserObject other = user.get(m.getPrefixNick()); // nick of other user
-
-		  if ((other != null) && other.op
-			  && other.nick.startsWith("u-"))
-		  {
-		    int num = properties.size();
-
-		    for (Enumeration e = properties.keys(); e.hasMoreElements(); )
-		    {
-		      String k = (String) e.nextElement();
-		      String v = properties.getProperty(k);
-
-		      if (k.equals("irc_password"))
-		      {
-			v = "*****";
-		      }
-		      else
-		      {
-			v = "(" + v + ")";
-		      }
-
-			IRCMessage m2 = new IRCMessage();
-			m2.command = "PRIVMSG";
-			m2.numParams = 2;
-			m2.params[0] = m.getPrefixNick();
-			m2.params[1] = num + ": (" + k + ") " + v;
-			
-			IRCMessageQueue q = getSendQ();
-			if (q != null)
-			{
-				q.putMessage(m2);
-			}
-		      num --;
-		    }
-		  }
-		}
-		else
-		{
-			if (extApp != null)
-			{
-				extApp.msgQuery(m);
-			}
-		}
-
-		*/
+    if (cmd.IsSameAs(wxT("UPDATE")))
+    {
+      wxString restOfLine = tkz.GetString();
+      doUpdate(restOfLine);
+    }
+    else if (cmd.IsSameAs(wxT("LIST_END")))
+    {
+      if (d->state == 5) // if in sendlist processing state
+      {
+	d->state = 3;  // get next table
+      }
+    }
+    else if (cmd.IsSameAs(wxT("LIST_MORE")))
+    {
+      if (d->state == 5) // if in sendlist processing state
+      {
+	d->state = 4;  // send next SENDLIST
+      }
+    }
+    else if (cmd.IsSameAs(wxT("NOT_FOUND")))
+    {
+    }
+  }
 }
 	
 	
@@ -677,7 +637,8 @@ static wxString getLastEntryTime(int tableID)
 
   if (tableID == 1)
   {
-    return wxT("2000-01-01 12:00:00");
+    wxString max = IRCDDBAppRptrObject::maxTime.Format( wxT("%Y-%m-%d %H:%M:%S") );
+    return max;
   }
 
   return wxT("DBERROR");

@@ -53,6 +53,12 @@ class IRCMessage
 
     void addParam( const wxString& p );
 
+    wxString getCommand();
+
+    wxString getParam( int pos );
+
+    int getParamCount();
+
   private:
 
     void parsePrefix();

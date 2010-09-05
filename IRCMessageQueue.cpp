@@ -61,6 +61,21 @@ bool IRCMessageQueue::messageAvailable()
 }
 
 
+IRCMessage * IRCMessageQueue::peekFirst()
+{
+  wxMutexLocker lock(accessMutex);
+
+  IRCMessageQueueItem * k = first;
+
+  if ( k == NULL )
+  {
+    return NULL;
+  }
+
+  return k->msg;
+}
+
+
 IRCMessage * IRCMessageQueue::getMessage()
 {
   wxMutexLocker lock(accessMutex);

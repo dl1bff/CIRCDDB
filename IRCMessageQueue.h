@@ -61,6 +61,8 @@ class IRCMessageQueue
 
     IRCMessage * getMessage();
 
+    IRCMessage * peekFirst();
+
     void putMessage ( IRCMessage * m );
 
   private:

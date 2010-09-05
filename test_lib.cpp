@@ -72,7 +72,65 @@ int main (int argc, char *argv[])
   ii.open();
 
   wxLogVerbose(wxT("main program running"));
-  wxSleep(600); // 10 minutes
+
+  bool keep_running = true;
+
+  for (int i=0; (i < 1800) && keep_running; i++)
+  {
+    IRCDDB_RESPONSE_TYPE res;
+
+    while ((res = ii.getMessageType()) != IDRT_NONE)
+    {
+      switch (res)
+      {
+	case IDRT_USER:
+	  {
+	    wxString user;
+	    wxString rptr;
+	    wxString gateway;
+	    wxString ipaddr;
+
+	    ii.receiveUser(user, rptr, gateway, ipaddr);
+	    wxLogVerbose(wxT("USER: (") + user + wxT(") (") + rptr +
+		wxT(") (") + gateway + wxT(") (") + ipaddr + wxT(")"));
+	  }
+	  break;
+
+	case IDRT_REPEATER:
+	  {
+	    wxString rptr;
+	    wxString gateway;
+	    wxString ipaddr;
+	    DSTAR_PROTOCOL proto;
+
+	    ii.receiveRepeater(rptr, gateway, ipaddr, proto);
+	    wxLogVerbose(wxT("RPTR: (") + rptr +
+		wxT(") (") + gateway + wxT(") (") + ipaddr + wxT(")"));
+	  }
+	  break;
+
+	case IDRT_GATEWAY:
+	  {
+	    wxString gateway;
+	    wxString ipaddr;
+	    DSTAR_PROTOCOL proto;
+
+	    ii.receiveGateway(gateway, ipaddr, proto);
+	    wxLogVerbose(wxT("GWAY: (") +
+		 gateway + wxT(") (") + ipaddr + wxT(")"));
+	  }
+	  break;
+
+	default:
+	  wxLogError(wxT("unknown message type!!"));
+	  keep_running = false;
+      }
+
+      if (!keep_running) break;
+    }
+
+    wxSleep(1);
+  }
   wxLogVerbose(wxT("main program running"));
 
   ii.close();

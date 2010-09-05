@@ -56,6 +56,21 @@ void IRCMessage::addParam( const wxString& p )
   numParams = params.GetCount();
 }
 
+int IRCMessage::getParamCount()
+{
+  return params.GetCount();
+}
+
+wxString IRCMessage::getParam( int pos )
+{
+  return params[pos];
+}
+
+wxString IRCMessage::getCommand()
+{
+  return command;
+}
+
 	
 void IRCMessage::parsePrefix()
 {

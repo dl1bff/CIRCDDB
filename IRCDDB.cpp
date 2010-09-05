@@ -70,7 +70,13 @@ bool CIRCDDB::sendHeard(const wxString& userCallsign, const wxString& repeaterCa
 }
 
 // Send query for a gateway/reflector, a false return implies a network error
-bool CIRCDDB::findGateway(const wxString& repeaterCallsign)
+bool CIRCDDB::findGateway(const wxString& gatewayCallsign)
+{
+  return true;
+}
+
+
+bool CIRCDDB::findRepeater(const wxString& repeaterCallsign)
 {
   return true;
 }
@@ -86,13 +92,83 @@ bool CIRCDDB::findUser(const wxString& userCallsign)
 // Get the waiting message type
 IRCDDB_RESPONSE_TYPE CIRCDDB::getMessageType()
 {
-  return IDRT_NONE;
+  return d->app->getReplyMessageType();
+}
+
+// Get a gateway message, as a result of IDRT_REPEATER returned from getMessageType()
+// A false return implies a network error
+bool CIRCDDB::receiveRepeater(wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol)
+{
+  IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
+
+  if (rt != IDRT_REPEATER)
+  {
+    wxLogError(wxT("CIRCDDB::receiveRepeater: unexpected response type"));
+    return false;
+  }
+
+  IRCMessage * m = d->app->getReplyMessage();
+
+  if (m == NULL)
+  {
+    wxLogError(wxT("CIRCDDB::receiveRepeater: no message"));
+    return false;
+  }
+
+  if (!m->getCommand().IsSameAs(wxT("IDRT_REPEATER")))
+  {
+    wxLogError(wxT("CIRCDDB::receiveRepeater: wrong message type"));
+    return false;
+  }
+
+  if (m->getParamCount() != 3)
+  {
+    wxLogError(wxT("CIRCDDB::receiveRepeater: unexpected number of message parameters"));
+    return false;
+  }
+
+  repeaterCallsign = m->getParam(0);
+  gatewayCallsign = m->getParam(1);
+  address = m->getParam(2);
+
+  return true;
 }
 
 // Get a gateway message, as a result of IDRT_GATEWAY returned from getMessageType()
 // A false return implies a network error
-bool CIRCDDB::receiveGateway(wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol)
+bool CIRCDDB::receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol)
 {
+  IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
+
+  if (rt != IDRT_GATEWAY)
+  {
+    wxLogError(wxT("CIRCDDB::receiveGateway: unexpected response type"));
+    return false;
+  }
+
+  IRCMessage * m = d->app->getReplyMessage();
+
+  if (m == NULL)
+  {
+    wxLogError(wxT("CIRCDDB::receiveGateway: no message"));
+    return false;
+  }
+
+  if (!m->getCommand().IsSameAs(wxT("IDRT_GATEWAY")))
+  {
+    wxLogError(wxT("CIRCDDB::receiveGateway: wrong message type"));
+    return false;
+  }
+
+  if (m->getParamCount() != 2)
+  {
+    wxLogError(wxT("CIRCDDB::receiveGateway: unexpected number of message parameters"));
+    return false;
+  }
+
+  gatewayCallsign = m->getParam(0);
+  address = m->getParam(1);
+
   return true;
 }
 
@@ -100,6 +176,39 @@ bool CIRCDDB::receiveGateway(wxString& repeaterCallsign, wxString& gatewayCallsi
 // A false return implies a network error
 bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address)
 {
+  IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
+
+  if (rt != IDRT_USER)
+  {
+    wxLogError(wxT("CIRCDDB::receiveUser: unexpected response type"));
+    return false;
+  }
+
+  IRCMessage * m = d->app->getReplyMessage();
+
+  if (m == NULL)
+  {
+    wxLogError(wxT("CIRCDDB::receiveUser: no message"));
+    return false;
+  }
+
+  if (!m->getCommand().IsSameAs(wxT("IDRT_USER")))
+  {
+    wxLogError(wxT("CIRCDDB::receiveUser: wrong message type"));
+    return false;
+  }
+
+  if (m->getParamCount() != 4)
+  {
+    wxLogError(wxT("CIRCDDB::receiveUser: unexpected number of message parameters"));
+    return false;
+  }
+
+  userCallsign = m->getParam(0);
+  repeaterCallsign = m->getParam(1);
+  gatewayCallsign = m->getParam(2);
+  address = m->getParam(3);
+
   return true;
 }
 

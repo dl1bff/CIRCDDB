@@ -18,7 +18,8 @@
 #
 
 
-CPPFLAGS=-g -DDEBUG_IRC -Wall ` wx-config --cppflags base `
+# CPPFLAGS=-g -DDEBUG_IRC -Wall ` wx-config --cppflags base `
+CPPFLAGS=-g -Wall ` wx-config --cppflags base `
 
 LDFLAGS=-g ` wx-config --libs base ` 
 

@@ -23,11 +23,12 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define _IRCDDBAPP_H
 
 
+#include "IRCDDB.h"
 #include "IRCApplication.h"
 
 #include <wx/wx.h>
 
-struct IRCDDBAppPrivate;
+class IRCDDBAppPrivate;
 
 class IRCDDBApp : public IRCApplication, wxThread
 {
@@ -55,10 +56,17 @@ class IRCDDBApp : public IRCApplication, wxThread
     bool startWork();
     void stopWork();
 
+    IRCDDB_RESPONSE_TYPE getReplyMessageType();
+
+    IRCMessage * getReplyMessage();
+
+
   protected:
     virtual wxThread::ExitCode Entry();
 
   private:
+    void doUpdate ( wxString& msg );
+    wxString getIPAddress( wxString& zonerp_cs );
     bool findServerUser();
     void enablePublicUpdates();
     IRCDDBAppPrivate * d;

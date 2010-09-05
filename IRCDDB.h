@@ -28,7 +28,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 enum IRCDDB_RESPONSE_TYPE {
 	IDRT_NONE,
 	IDRT_USER,
-	IDRT_GATEWAY
+	IDRT_GATEWAY,
+	IDRT_REPEATER
 };
 
 enum DSTAR_PROTOCOL {
@@ -53,7 +54,10 @@ public:
 	bool sendHeard(const wxString& userCallsign, const wxString& repeaterCallsign);
 
 	// Send query for a gateway/reflector, a false return implies a network error
-	bool findGateway(const wxString& repeaterCallsign);
+	bool findGateway(const wxString& gatewayCallsign);
+
+	// Send query for a repeater module, a false return implies a network error
+	bool findRepeater(const wxString& repeaterCallsign);
 
 	// Send query for a user, a false return implies a network error
 	bool findUser(const wxString& userCallsign);
@@ -63,9 +67,13 @@ public:
 	// Get the waiting message type
 	IRCDDB_RESPONSE_TYPE getMessageType();
 
+	// Get a gateway message, as a result of IDRT_REPEATER returned from getMessageType()
+	// A false return implies a network error
+	bool receiveRepeater(wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol);
+
 	// Get a gateway message, as a result of IDRT_GATEWAY returned from getMessageType()
 	// A false return implies a network error
-	bool receiveGateway(wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol);
+	bool receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR_PROTOCOL& protocol);
 
 	// Get a user message, as a result of IDRT_USER returned from getMessageType()
 	// A false return implies a network error
