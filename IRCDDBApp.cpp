@@ -234,6 +234,8 @@ void IRCDDBApp::userJoin (const wxString& nick, const wxString& name, const wxSt
 		
   d->user[nick] = u;
 
+  wxLogVerbose(wxT("add %d: (") + u.nick + wxT(") (") + u.host + wxT(")"), d->user.size());
+
   if (d->acceptPublicUpdates)
   {
     int hyphenPos = nick.Find(wxT('-'));
@@ -265,12 +267,13 @@ void IRCDDBApp::userLeave (const wxString& nick)
 
   d->user.erase(nick);
 
+  wxLogVerbose(wxT("rm %d: ") + nick, d->user.size());
+
   if (d->currentServer.Len() > 0)
   {
-    IRCDDBAppUserMap::iterator i = d->user.find( nick );
-
-    if (i == d->user.end())
+    if (d->user.count(d->myNick) != 1)
     {
+      wxLogVerbose(wxT("IRCDDBApp::userLeave: could not find own nick"));
       return;
     }
 
@@ -301,6 +304,7 @@ void IRCDDBApp::userListReset()
 void IRCDDBApp::setCurrentNick(const wxString& nick)
 {
   d->myNick = nick;
+  wxLogVerbose(wxT("myNick= ") + nick);
 }
 
 void IRCDDBApp::setTopic(const wxString& topic)
@@ -315,17 +319,21 @@ bool IRCDDBApp::findServerUser()
   bool found = false;
 
   IRCDDBAppUserMap::iterator it;
+  int i = 0;
 
   for( it = d->user.begin(); it != d->user.end(); ++it )
   {
     wxString key = it->first;
     IRCDDBAppUserObject u = it->second;
 
+    i++;
+    wxLogVerbose(wxT("user %d: ") + u.nick, i);
+
     if (u.nick.StartsWith(wxT("s-")) && u.op && !d->myNick.IsSameAs(u.nick))
     {
       d->currentServer = u.nick;
       found = true;
-      break;
+      // break;
     }
   }
 
@@ -336,9 +344,7 @@ void IRCDDBApp::userChanOp (const wxString& nick, bool op)
 {
   wxMutexLocker lock(d->userMapMutex);
 
-  IRCDDBAppUserMap::iterator i = d->user.find( nick );
-
-  if (i != d->user.end())
+  if (d->user.count(nick) == 1)
   {
     d->user[nick].op = op;
   }
@@ -358,6 +364,7 @@ static const int numberOfTables = 2;
 
 wxString IRCDDBApp::getIPAddress(wxString& zonerp_cs)
 {
+  wxMutexLocker lock(d->userMapMutex);
   wxString gw = zonerp_cs;
 
   gw.Replace(wxT("_"), wxT(" "));
@@ -370,13 +377,10 @@ wxString IRCDDBApp::getIPAddress(wxString& zonerp_cs)
 
   for (j=1; j <= 4; j++)
   {
+    int i = 0;
     wxString ircUser = gw.Strip() + wxString::Format(wxT("-%d"), j);
 
-    // wxLogVerbose(ircUser);
-
-    IRCDDBAppUserMap::iterator i = d->user.find( ircUser );
-
-    if (i != d->user.end())
+    if (d->user.count(ircUser) == 1)
     {
       IRCDDBAppUserObject o = d->user[ ircUser ];
 
@@ -385,7 +389,10 @@ wxString IRCDDBApp::getIPAddress(wxString& zonerp_cs)
 	max_usn = o.usn;
 	ipAddr = o.host;
       }
+      i = 1;
     }
+    wxLogVerbose(wxT("getIP %d (") + ircUser + wxT(") (") + ipAddr + wxT(")"), i);
+
   }
 
   return ipAddr;
@@ -528,9 +535,7 @@ void IRCDDBApp::doUpdate ( wxString& msg )
 	  userCallsign.Replace(wxT("_"), wxT(" "));
 	  arearp_cs.Replace(wxT("_"), wxT(" "));
 
-	  IRCDDBAppRptrMap::iterator i = d->rptrMap.find( value );
-
-	  if (i != d->rptrMap.end())
+	  if (d->rptrMap.count(value) == 1)
 	  {
 	    IRCDDBAppRptrObject o = d->rptrMap[value];
 	    zonerp_cs = o.zonerp_cs;

@@ -98,6 +98,7 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
       if (state == 4)
       {
 	state = 5;  // next: JOIN
+	app->setCurrentNick(currentNick);
       }
     }
     else if (m->command.IsSameAs(wxT("PING")))
@@ -284,7 +285,7 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
       m->params.Add(name);
       m->params.Add(wxT("0"));
       m->params.Add(wxT("*"));
-      m->params.Add(wxT("CIRCDDB:v0.0.4"));
+      m->params.Add(wxT("CIRCDDB:v0.1"));
       sendQ->putMessage(m);
 
       timer = 30;

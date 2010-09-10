@@ -75,7 +75,7 @@ int main (int argc, char *argv[])
 
   bool keep_running = true;
 
-  for (int i=0; (i < 1800) && keep_running; i++)
+  for (int i=0; (i < 180000) && keep_running; i++)
   {
     IRCDDB_RESPONSE_TYPE res;
 
