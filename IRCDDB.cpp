@@ -72,19 +72,37 @@ bool CIRCDDB::sendHeard(const wxString& userCallsign, const wxString& repeaterCa
 // Send query for a gateway/reflector, a false return implies a network error
 bool CIRCDDB::findGateway(const wxString& gatewayCallsign)
 {
-  return true;
+  if (gatewayCallsign.Len() != 8)
+  {
+    wxLogVerbose(wxT("CIRCDDB::findGateway: len != 8"));
+    return false;
+  }
+
+  return d->app->findGateway( gatewayCallsign.Upper());
 }
 
 
 bool CIRCDDB::findRepeater(const wxString& repeaterCallsign)
 {
-  return true;
+  if (repeaterCallsign.Len() != 8)
+  {
+    wxLogVerbose(wxT("CIRCDDB::findRepeater: len != 8"));
+    return false;
+  }
+
+  return d->app->findRepeater( repeaterCallsign.Upper());
 }
 
 // Send query for a user, a false return implies a network error
 bool CIRCDDB::findUser(const wxString& userCallsign)
 {
-  return true;
+  if (userCallsign.Len() != 8)
+  {
+    wxLogVerbose(wxT("CIRCDDB::findUser: len != 8"));
+    return false;
+  }
+
+  return d->app->findUser( userCallsign.Upper());
 }
 
 // The following functions are for processing received messages

@@ -25,8 +25,28 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <wx/wx.h>
 
 
+wxArrayString userList;
+wxArrayString rptrList;
+wxArrayString gwList;
+
+
 int main (int argc, char *argv[])
 {
+
+  userList.Add(wxT("DL1BFF  "));
+  userList.Add(wxT("DG8NGN  "));
+  userList.Add(wxT("DL5DI   "));
+  userList.Add(wxT("Y35O    "));
+
+  rptrList.Add(wxT("REF006 C"));
+  rptrList.Add(wxT("XRF023 A"));
+  rptrList.Add(wxT("DB0DF  B"));
+  rptrList.Add(wxT("DB0MYK B"));
+
+  gwList.Add(wxT("DB0VOX G"));
+  gwList.Add(wxT("DB0DF  G"));
+  gwList.Add(wxT("Y21O   G"));
+  gwList.Add(wxT("DB0TVM G"));
 
   srand(time(0));
 
@@ -75,8 +95,35 @@ int main (int argc, char *argv[])
 
   bool keep_running = true;
 
-  for (int i=0; (i < 180000) && keep_running; i++)
+  for (int i=0; (i < 7200) && keep_running; i++)
   {
+
+    if ( (i & 0x03) == 0 )
+    {
+      wxString s;
+      switch ( i & 0x0c )
+      {
+	case 0:
+	  s = userList.Item( (i >> 4) & 0x03 );
+	  ii.findUser(s);
+	  wxLogVerbose(wxT("REQUSER: (") + s + wxT(")"));
+	  break;
+
+	case 0x04:
+	  s = rptrList.Item( (i >> 4) & 0x03 );
+	  ii.findRepeater(s);
+	  wxLogVerbose(wxT("REQRPTR: (") + s + wxT(")"));
+	  break;
+
+	case 0x08:
+	  s = gwList.Item( (i >> 4) & 0x03 );
+	  ii.findGateway(s);
+	  wxLogVerbose(wxT("REQGWAY: (") + s + wxT(")"));
+	  break;
+      }
+    }
+
+
     IRCDDB_RESPONSE_TYPE res;
 
     while ((res = ii.getMessageType()) != IDRT_NONE)

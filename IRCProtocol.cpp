@@ -285,7 +285,7 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
       m->params.Add(name);
       m->params.Add(wxT("0"));
       m->params.Add(wxT("*"));
-      m->params.Add(wxT("CIRCDDB:v0.1"));
+      m->params.Add(wxT("CIRCDDB:v0.2"));
       sendQ->putMessage(m);
 
       timer = 30;

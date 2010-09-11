@@ -167,7 +167,7 @@ IRCClient::IRCClient( IRCApplication * app, const wxString& update_channel,
 {
   safeStringCopy(host_name, hostName.mb_str(), sizeof host_name);
 
-  this -> callsign = callsign;
+  this -> callsign = callsign.Lower();
   this -> port = port;
   this -> password = password;
 
@@ -216,15 +216,15 @@ void IRCClient::stopWork()
 wxThread::ExitCode IRCClient::Entry ()
 {
 
-  unsigned int numAddr;
+  unsigned int numAddr = 0;
 
 #define MAXIPV4ADDR 10
   struct sockaddr_in addr[MAXIPV4ADDR];
 
   int state = 0;
   int timer = 0;
-  int sock;
-  unsigned int currentAddr;
+  int sock = 0;
+  unsigned int currentAddr = 0;
 
   while (true)
   {

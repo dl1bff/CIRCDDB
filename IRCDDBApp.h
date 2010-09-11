@@ -60,12 +60,16 @@ class IRCDDBApp : public IRCApplication, wxThread
 
     IRCMessage * getReplyMessage();
 
+    bool findUser ( const wxString& s );
+    bool findRepeater ( const wxString& s );
+    bool findGateway ( const wxString& s );
 
   protected:
     virtual wxThread::ExitCode Entry();
 
   private:
     void doUpdate ( wxString& msg );
+    void doNotFound ( wxString& msg, wxString& retval );
     wxString getIPAddress( wxString& zonerp_cs );
     bool findServerUser();
     void enablePublicUpdates();
