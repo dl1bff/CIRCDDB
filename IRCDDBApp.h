@@ -72,7 +72,6 @@ class IRCDDBApp : public IRCApplication, wxThread
     void doNotFound ( wxString& msg, wxString& retval );
     wxString getIPAddress( wxString& zonerp_cs );
     bool findServerUser();
-    void enablePublicUpdates();
     IRCDDBAppPrivate * d;
 };
 

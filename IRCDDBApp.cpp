@@ -19,7 +19,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#if defined(WIN32)
+
+#define WIN32_LEAN_AND_MEAN
+
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
+#else
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+#endif
+
+
 #include "IRCDDBApp.h"
+#include "IRCutils.h"
 
 #include <wx/datetime.h>
 #include <wx/regex.h>
@@ -122,7 +139,7 @@ class IRCDDBAppPrivate
   wxString updateChannel;
   wxString channelTopic;
 
-  bool acceptPublicUpdates;
+  bool initReady;
 
   bool terminateThread;
 
@@ -139,7 +156,7 @@ IRCDDBApp::IRCDDBApp( const wxString& u_chan )
 {
 
   d->sendQ = NULL;
-  d->acceptPublicUpdates = false;
+  d->initReady = false;
 
   userListReset();
 		
@@ -239,7 +256,7 @@ void IRCDDBApp::userJoin (const wxString& nick, const wxString& name, const wxSt
 
   // wxLogVerbose(wxT("add %d: (") + u.nick + wxT(") (") + u.host + wxT(")"), d->user.size());
 
-  if (d->acceptPublicUpdates)
+  if (d->initReady)
   {
     int hyphenPos = nick.Find(wxT('-'));
 
@@ -297,7 +314,7 @@ void IRCDDBApp::userLeave (const wxString& nick)
 	      // currentServer = null;
 	      d->state = 2;  // choose new server
 	      d->timer = 200;
-	      d->acceptPublicUpdates = false;
+	      d->initReady = false;
       }
     }
   }
@@ -363,10 +380,6 @@ void IRCDDBApp::userChanOp (const wxString& nick, bool op)
 }
 	
 
-void IRCDDBApp::enablePublicUpdates()
-{
-  d->acceptPublicUpdates = true;
-}
 
 static const int numberOfTables = 2;
 
@@ -423,9 +436,50 @@ bool IRCDDBApp::findGateway(const wxString& gwCall)
   return true;
 }
 
+static void findReflector( const wxString& rptrCall, IRCDDBAppPrivate * d )
+{
+  wxString zonerp_cs;
+  wxString ipAddr;
+
+#define MAXIPV4ADDR 5
+  struct sockaddr_in addr[MAXIPV4ADDR];
+  unsigned int numAddr = 0;
+
+  char host_name[80];
+
+  wxString host = rptrCall.Mid(0,6) + wxT(".reflector.ircddb.net");
+
+  safeStringCopy(host_name, host.mb_str(wxConvUTF8), sizeof host_name);
+
+  if (getAllIPV4Addresses(host_name, 0, &numAddr, addr, MAXIPV4ADDR) == 0)
+  {
+    if (numAddr > 0)
+    {
+      unsigned char * a = (unsigned char *) &addr[0].sin_addr;
+
+      ipAddr = wxString::Format(wxT("%d.%d.%d.%d"), a[0], a[1], a[2], a[3]);
+      zonerp_cs = rptrCall;
+      zonerp_cs.SetChar(7, wxT('G'));
+    }
+  }
+  
+
+  IRCMessage * m2 = new IRCMessage(wxT("IDRT_REPEATER"));
+  m2->addParam(rptrCall);
+  m2->addParam(zonerp_cs);
+  m2->addParam(ipAddr);
+  d->replyQ.putMessage(m2);
+}
 
 bool IRCDDBApp::findRepeater(const wxString& rptrCall)
 {
+
+  if (rptrCall.StartsWith(wxT("XRF")) || rptrCall.StartsWith(wxT("REF")))
+  {
+    findReflector(rptrCall, d);
+    return true;
+  }
+
   wxString arearp_cs = rptrCall;
   arearp_cs.Replace(wxT(" "), wxT("_"));
 
@@ -641,7 +695,7 @@ void IRCDDBApp::doUpdate ( wxString& msg )
 
 	  d->rptrMap[key] = newRptr;
 
-	  if (d->acceptPublicUpdates)
+	  if (d->initReady)
 	  {
 	    wxString arearp_cs = key;
 	    wxString zonerp_cs = value;
@@ -657,7 +711,7 @@ void IRCDDBApp::doUpdate ( wxString& msg )
 	    d->replyQ.putMessage(m2);
 	  }
 	}
-	else if ((tableID == 0) && d->acceptPublicUpdates)
+	else if ((tableID == 0) && d->initReady)
 	{
 	  wxMutexLocker lock(d->rptrMapMutex);
 
@@ -941,8 +995,8 @@ wxThread::ExitCode IRCDDBApp::Entry()
       }
       else
       {
-	wxLogVerbose(wxT( "IRCDDBApp: state=6 enablePublcUpdates"));
-	enablePublicUpdates();
+	wxLogVerbose(wxT( "IRCDDBApp: state=6 initialization completed"));
+	d->initReady = true;
 	d->state = 7;
       }
       break;
@@ -959,7 +1013,7 @@ wxThread::ExitCode IRCDDBApp::Entry()
       // disconnect db
       d->state = 0;
       d->timer = 0;
-      d->acceptPublicUpdates = false;
+      d->initReady = false;
       break;
 			
     }
