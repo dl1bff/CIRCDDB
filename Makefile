@@ -37,7 +37,7 @@ test_lib: test_lib.o $L
 
 $L(IRCDDB.o): IRCDDB.h $L(IRCClient.o) $L(IRCDDBApp.o)
 
-$L(IRCClient.o): IRCClient.h $L(IRCReceiver.o) $L(IRCProtocol.o)
+$L(IRCClient.o): IRCClient.h $L(IRCReceiver.o) $L(IRCProtocol.o) $L(IRCutils.o)
 
 $L(IRCReceiver.o): IRCReceiver.h $L(IRCMessageQueue.o)
 
@@ -47,7 +47,7 @@ $L(IRCProtocol.o): IRCProtocol.h IRCApplication.h $L(IRCMessageQueue.o)
 
 $L(IRCMessage.o): IRCMessage.h
 
-$L(IRCDDBApp.o): IRCDDBApp.h IRCApplication.h
+$L(IRCDDBApp.o): IRCDDBApp.h IRCApplication.h $L(IRCutils.o)
 
 IRCApplication.h: IRCMessageQueue.h
 
