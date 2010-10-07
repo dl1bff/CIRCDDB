@@ -29,7 +29,25 @@ IRCProtocol::IRCProtocol ( IRCApplication * app,
   this -> channel = channel;
   this -> app = app;
 
-  nicks.Add(callsign);
+  int hyphenPos = callsign.find(wxT('-'));
+
+  if (hyphenPos == wxNOT_FOUND)
+  {
+    wxString n;
+
+    n = callsign + wxT("-1");
+    nicks.Add(n);
+    n = callsign + wxT("-2");
+    nicks.Add(n);
+    n = callsign + wxT("-3");
+    nicks.Add(n);
+    n = callsign + wxT("-4");
+    nicks.Add(n);
+  }
+  else
+  {
+    nicks.Add(callsign);
+  }
 
   name = callsign;
 
