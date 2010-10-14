@@ -507,6 +507,65 @@ bool IRCDDBApp::findRepeater(const wxString& rptrCall)
   return true;
 }
 
+bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
+        const wxString& yourCall, const wxString& rpt1,
+        const wxString& rpt2, unsigned char flag1,
+        unsigned char flag2, unsigned char flag3 )
+{
+
+  wxString my = myCall;
+  wxString myext = myCallExt;
+  wxString ur = yourCall;
+  wxString r1 = rpt1;
+  wxString r2 = rpt2;
+
+  wxRegEx nonValid(wxT("[^A-Z0-9/]"));
+  wxString underScore = wxT("_");
+
+  nonValid.Replace(&my, underScore);
+  nonValid.Replace(&myext, underScore);
+  nonValid.Replace(&ur, underScore);
+  nonValid.Replace(&r1, underScore);
+  nonValid.Replace(&r2, underScore);
+
+  wxString srv = d->currentServer;
+  IRCMessageQueue * q = getSendQ();
+
+  if ((srv.Len() > 0) && (d->state >= 6) && (q != NULL))
+  {
+    wxString cmd =  wxT("UPDATE ");
+
+    wxDateTime dt = wxDateTime::Now();
+
+    cmd.Append(dt.Format(wxT("%Y-%m-%d %H:%M:%S"), wxDateTime::GMT0));
+    cmd.Append(wxT(" "));
+
+    cmd.Append(my);
+    cmd.Append(wxT(" "));
+    cmd.Append(r1);
+    cmd.Append(wxT(" "));
+    cmd.Append(r2);
+    cmd.Append(wxT(" "));
+    cmd.Append(ur);
+    cmd.Append(wxT(" "));
+
+    wxString flags = wxString::Format(wxT("%02X %02X %02X"), flag1, flag2, flag3);
+
+    cmd.Append(flags);
+    cmd.Append(wxT(" "));
+    cmd.Append(myext);
+
+    IRCMessage * m = new IRCMessage(srv, cmd);
+
+    q->putMessage(m);
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
 bool IRCDDBApp::findUser(const wxString& usrCall)
 {
   wxString srv = d->currentServer;

@@ -52,7 +52,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 IRCClient::IRCClient( IRCApplication * app, const wxString& update_channel,
-    const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password )
+    const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
+    const wxString& versionInfo )
      : wxThread(wxTHREAD_JOINABLE)
 {
   safeStringCopy(host_name, hostName.mb_str(), sizeof host_name);
@@ -63,7 +64,7 @@ IRCClient::IRCClient( IRCApplication * app, const wxString& update_channel,
 
   this -> app = app;
 
-  proto = new IRCProtocol ( app, callsign, password, update_channel );
+  proto = new IRCProtocol ( app, this->callsign, password, update_channel, versionInfo );
 
   recvQ = NULL;
   sendQ = NULL;

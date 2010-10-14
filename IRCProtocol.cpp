@@ -22,12 +22,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "IRCProtocol.h"
 
+#define CIRCDDB_VERSION	  "0.4"
+
 IRCProtocol::IRCProtocol ( IRCApplication * app,
-    const wxString& callsign, const wxString& password, const wxString& channel )
+    const wxString& callsign, const wxString& password, const wxString& channel,
+    const wxString& versionInfo )
 {
   this -> password = password;
   this -> channel = channel;
   this -> app = app;
+
+  this->versionInfo = wxT("CIRCDDB:");
+  this->versionInfo.Append(wxT(CIRCDDB_VERSION));
+
+  if (versionInfo.Len() > 0)
+  {
+    this->versionInfo.Append(wxT(" "));
+    this->versionInfo.Append(versionInfo);
+  }
+
 
   int hyphenPos = callsign.find(wxT('-'));
 
@@ -303,7 +316,7 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
       m->params.Add(name);
       m->params.Add(wxT("0"));
       m->params.Add(wxT("*"));
-      m->params.Add(wxT("CIRCDDB:v0.2"));
+      m->params.Add(versionInfo);
       sendQ->putMessage(m);
 
       timer = 30;

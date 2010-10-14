@@ -42,7 +42,8 @@ struct CIRCDDBPrivate;
 
 class CIRCDDB {
 public:
-	CIRCDDB(const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password);
+	CIRCDDB(const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
+	    const wxString& versionInfo );
 	~CIRCDDB();
 
 	// A false return implies a network error, or unable to log in
@@ -51,7 +52,10 @@ public:
 	// The following three functions don't block waiting for a reply, they just send the data
 
 	// Send heard data, a false return implies a network error
-	bool sendHeard(const wxString& userCallsign, const wxString& repeaterCallsign);
+	bool sendHeard(const wxString& myCall, const wxString& myCallExt,
+	          const wxString& yourCall, const wxString& rpt1,
+		  const wxString& rpt2, unsigned char flag1,
+		  unsigned char flag2, unsigned char flag3 );
 
 	// Send query for a gateway/reflector, a false return implies a network error
 	bool findGateway(const wxString& gatewayCallsign);

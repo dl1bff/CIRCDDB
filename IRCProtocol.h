@@ -32,7 +32,8 @@ class IRCProtocol
 {
   public:
     IRCProtocol ( IRCApplication * app,
-      const wxString& callsign, const wxString& password, const wxString& channel );
+      const wxString& callsign, const wxString& password, const wxString& channel,
+      const wxString& versionInfo );
 
     ~IRCProtocol();
 
@@ -48,6 +49,7 @@ class IRCProtocol
     wxString channel;
     wxString name;
     wxString currentNick;
+    wxString versionInfo;
 
     int state;
     int timer;

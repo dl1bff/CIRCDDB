@@ -84,7 +84,8 @@ int main (int argc, char *argv[])
 
   CIRCDDB ii( wxT("group1-irc.ircddb.net"), 9007,
       wxString(argv[1], wxConvUTF8),
-      wxString(argv[2], wxConvUTF8) ); 
+      wxString(argv[2], wxConvUTF8),
+      wxT("test_lib:20101014")); 
 
 
   wxLogVerbose(wxT("main: before open"));
@@ -119,6 +120,15 @@ int main (int argc, char *argv[])
 	  s = gwList.Item( (i >> 4) & 0x03 );
 	  ii.findGateway(s);
 	  wxLogVerbose(wxT("REQGWAY: (") + s + wxT(")"));
+
+	  ii.sendHeard(
+	      wxT("DL1BFF  "),
+	      wxT("TEST"),
+	      wxT("CQCQCQ  "),
+	      wxT("DB0DF  B"),
+	      wxT("DB0DF  G"),
+	      0, (i & 255), ((i >> 8) & 255));
+
 	  break;
       }
     }

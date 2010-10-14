@@ -64,6 +64,12 @@ class IRCDDBApp : public IRCApplication, wxThread
     bool findRepeater ( const wxString& s );
     bool findGateway ( const wxString& s );
 
+    bool sendHeard(const wxString& myCall, const wxString& myCallExt,
+            const wxString& yourCall, const wxString& rpt1,
+	    const wxString& rpt2, unsigned char flag1,
+	    unsigned char flag2, unsigned char flag3 );
+
+
   protected:
     virtual wxThread::ExitCode Entry();
 

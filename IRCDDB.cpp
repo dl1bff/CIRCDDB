@@ -36,14 +36,16 @@ struct CIRCDDBPrivate
 
 
 CIRCDDB::CIRCDDB(const wxString& hostName, unsigned int port,
-    const wxString& callsign, const wxString& password) : d( new CIRCDDBPrivate )
+    const wxString& callsign, const wxString& password,
+    const wxString& versionInfo ) : d( new CIRCDDBPrivate )
 
 {
   wxString update_channel = wxT("#dstar");
 
   d->app = new IRCDDBApp(update_channel);
 
-  d->client = new IRCClient( d->app, update_channel, hostName, port, callsign, password );
+  d->client = new IRCClient( d->app, update_channel, hostName, port, callsign,
+    password, versionInfo );
 }
 
 CIRCDDB::~CIRCDDB()
@@ -64,9 +66,42 @@ bool CIRCDDB::open()
 // The following three functions don't block waiting for a reply, they just send the data
 
 // Send heard data, a false return implies a network error
-bool CIRCDDB::sendHeard(const wxString& userCallsign, const wxString& repeaterCallsign)
+bool CIRCDDB::sendHeard( const wxString& myCall, const wxString& myCallExt,
+          const wxString& yourCall, const wxString& rpt1,
+	  const wxString& rpt2, unsigned char flag1,
+	  unsigned char flag2, unsigned char flag3 )
 {
-  return true;
+  if (myCall.Len() != 8)
+  {
+    wxLogVerbose(wxT("CIRCDDB::sendHeard:myCall: len != 8"));
+    return false;
+  }
+
+  if (myCallExt.Len() != 4)
+  {
+    wxLogVerbose(wxT("CIRCDDB::sendHeard:myCallExt: len != 4"));
+    return false;
+  }
+
+  if (yourCall.Len() != 8)
+  {
+    wxLogVerbose(wxT("CIRCDDB::sendHeard:yourCall: len != 8"));
+    return false;
+  }
+
+  if (rpt1.Len() != 8)
+  {
+    wxLogVerbose(wxT("CIRCDDB::sendHeard:rpt1: len != 8"));
+    return false;
+  }
+
+  if (rpt2.Len() != 8)
+  {
+    wxLogVerbose(wxT("CIRCDDB::sendHeard:rpt2: len != 8"));
+    return false;
+  }
+
+  return d->app->sendHeard( myCall, myCallExt, yourCall, rpt1, rpt2, flag1, flag2, flag3 );
 }
 
 // Send query for a gateway/reflector, a false return implies a network error
