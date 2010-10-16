@@ -535,9 +535,13 @@ bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
   {
     wxString cmd =  wxT("UPDATE ");
 
-    wxDateTime dt = wxDateTime::Now();
+    time_t now = ::time(NULL);
+    struct tm* tm = ::gmtime(&now);
+    char buffer[25U];
+    ::strftime(buffer, 25U, "%Y-%m-%d %H:%M:%S", tm);
+    wxString dtBuff = wxString(buffer, wxConvLocal);
+    cmd.Append(dtBuff);
 
-    cmd.Append(dt.Format(wxT("%Y-%m-%d %H:%M:%S"), wxDateTime::GMT0));
     cmd.Append(wxT(" "));
 
     cmd.Append(my);
