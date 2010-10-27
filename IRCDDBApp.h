@@ -69,6 +69,7 @@ class IRCDDBApp : public IRCApplication, wxThread
 	    const wxString& rpt2, unsigned char flag1,
 	    unsigned char flag2, unsigned char flag3 );
 
+    int getConnectionState();
 
   protected:
     virtual wxThread::ExitCode Entry();

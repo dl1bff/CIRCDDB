@@ -85,7 +85,7 @@ int main (int argc, char *argv[])
   CIRCDDB ii( wxT("group1-irc.ircddb.net"), 9007,
       wxString(argv[1], wxConvUTF8),
       wxString(argv[2], wxConvUTF8),
-      wxT("test_lib:20101014")); 
+      wxT("test_lib:20101027")); 
 
 
   wxLogVerbose(wxT("main: before open"));
@@ -98,6 +98,8 @@ int main (int argc, char *argv[])
 
   for (int i=0; (i < 7200) && keep_running; i++)
   {
+
+    wxLogVerbose(wxT("CONNECTION: %d"), ii.getConnectionState());
 
     if ( (i & 0x03) == 0 )
     {

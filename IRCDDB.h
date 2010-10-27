@@ -49,13 +49,22 @@ public:
 	// A false return implies a network error, or unable to log in
 	bool open();
 
-	// The following three functions don't block waiting for a reply, they just send the data
+	// get internal network status
+	int getConnectionState();
+	// one of these values is returned:
+	//  0  = not (yet) connected to the IRC server
+	//  1-6  = a new connection was established, download of repeater info etc. is
+	//         in progress
+	//  7 = the ircDDB connection is fully operational
+	//  10 = some network error occured, next state is "0" (new connection attempt)
 
 	// Send heard data, a false return implies a network error
 	bool sendHeard(const wxString& myCall, const wxString& myCallExt,
 	          const wxString& yourCall, const wxString& rpt1,
 		  const wxString& rpt2, unsigned char flag1,
 		  unsigned char flag2, unsigned char flag3 );
+
+	// The following three functions don't block waiting for a reply, they just send the data
 
 	// Send query for a gateway/reflector, a false return implies a network error
 	bool findGateway(const wxString& gatewayCallsign);

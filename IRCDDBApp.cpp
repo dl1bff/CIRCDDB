@@ -179,6 +179,11 @@ IRCDDBApp::~IRCDDBApp()
   delete d;
 }
 
+int IRCDDBApp::getConnectionState()
+{
+  return d->state;
+}
+
 IRCDDB_RESPONSE_TYPE IRCDDBApp::getReplyMessageType()
 {
   IRCMessage * m = d->replyQ.peekFirst();

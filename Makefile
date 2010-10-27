@@ -52,4 +52,6 @@ $L(IRCDDBApp.o): IRCDDBApp.h IRCApplication.h $L(IRCutils.o)
 IRCApplication.h: IRCMessageQueue.h
 
 
+clean:
+	rm -f $L test_lib test_lib.o
 

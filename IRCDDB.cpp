@@ -63,7 +63,13 @@ bool CIRCDDB::open()
   return d->client -> startWork()   &&   d->app->startWork();
 }
 
-// The following three functions don't block waiting for a reply, they just send the data
+
+int CIRCDDB::getConnectionState()
+{
+  return d->app->getConnectionState();
+}
+
+
 
 // Send heard data, a false return implies a network error
 bool CIRCDDB::sendHeard( const wxString& myCall, const wxString& myCallExt,
