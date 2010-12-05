@@ -64,6 +64,37 @@ public:
 		  const wxString& rpt2, unsigned char flag1,
 		  unsigned char flag2, unsigned char flag3 );
 
+
+	// same as sendHeard with two new fields:
+	//   network_destination:  empty string or 8-char call sign of the repeater
+	//	    or reflector, where this transmission is relayed to.
+	//   tx_message:  20-char TX message or empty string, if the user did not
+	//       send a TX message
+	bool sendHeardWithTXMsg(const wxString& myCall, const wxString& myCallExt,
+	          const wxString& yourCall, const wxString& rpt1,
+		  const wxString& rpt2, unsigned char flag1,
+		  unsigned char flag2, unsigned char flag3,
+		  const wxString& network_destination,
+		  const wxString& tx_message );
+
+	// this method should be called at the end of a transmission
+	//  num_dv_frames: number of DV frames sent out (96 bit frames, 20ms)
+	//  num_dv_silent_frames: number of DV silence frames sent out in the
+	//	last transmission, or -1 if the information is not available
+	//  num_bit_errors: number of bit errors of the received data. This should
+	//      be the derived from the first Golay block of the voice data. This
+	//      error correction code only looks at 24 bits of the 96 bit frame.
+	//      So, the overall bit error rate is calculated like this:
+	//      BER = num_bit_errors / (num_dv_frames * 24)
+	//      Set num_bit_errors = -1, if the error information is not available.
+	bool sendHeardWithTXStats(const wxString& myCall, const wxString& myCallExt,
+	          const wxString& yourCall, const wxString& rpt1,
+		  const wxString& rpt2, unsigned char flag1,
+		  unsigned char flag2, unsigned char flag3,
+		  int num_dv_frames,
+		  int num_dv_silent_frames,
+		  int num_bit_errors );
+
 	// The following three functions don't block waiting for a reply, they just send the data
 
 	// Send query for a gateway/reflector, a false return implies a network error

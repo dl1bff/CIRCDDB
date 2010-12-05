@@ -515,7 +515,9 @@ bool IRCDDBApp::findRepeater(const wxString& rptrCall)
 bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
         const wxString& yourCall, const wxString& rpt1,
         const wxString& rpt2, unsigned char flag1,
-        unsigned char flag2, unsigned char flag3 )
+        unsigned char flag2, unsigned char flag3,
+	const wxString& destination, const wxString& tx_msg,
+	const wxString& tx_stats )
 {
 
   wxString my = myCall;
@@ -523,6 +525,7 @@ bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
   wxString ur = yourCall;
   wxString r1 = rpt1;
   wxString r2 = rpt2;
+  wxString dest = destination;
 
   wxRegEx nonValid(wxT("[^A-Z0-9/]"));
   wxString underScore = wxT("_");
@@ -532,6 +535,9 @@ bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
   nonValid.Replace(&ur, underScore);
   nonValid.Replace(&r1, underScore);
   nonValid.Replace(&r2, underScore);
+  nonValid.Replace(&dest, underScore);
+
+  bool statsMsg = (tx_stats.Len() > 0);
 
   wxString srv = d->currentServer;
   IRCMessageQueue * q = getSendQ();
@@ -553,6 +559,10 @@ bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
     cmd.Append(wxT(" "));
     cmd.Append(r1);
     cmd.Append(wxT(" "));
+    if (!statsMsg)
+    {
+      cmd.Append(wxT("0 "));
+    }
     cmd.Append(r2);
     cmd.Append(wxT(" "));
     cmd.Append(ur);
@@ -563,6 +573,24 @@ bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
     cmd.Append(flags);
     cmd.Append(wxT(" "));
     cmd.Append(myext);
+
+    if (statsMsg)
+    {
+      cmd.Append(wxT(" # "));
+      cmd.Append(tx_stats);
+    }
+    else
+    {
+      cmd.Append(wxT(" 00 "));
+      cmd.Append(dest);
+
+      if (tx_msg.Len() == 20)
+      {
+        cmd.Append(wxT(" "));
+	cmd.Append(tx_msg);
+      }
+    }
+
 
     IRCMessage * m = new IRCMessage(srv, cmd);
 

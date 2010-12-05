@@ -67,7 +67,9 @@ class IRCDDBApp : public IRCApplication, wxThread
     bool sendHeard(const wxString& myCall, const wxString& myCallExt,
             const wxString& yourCall, const wxString& rpt1,
 	    const wxString& rpt2, unsigned char flag1,
-	    unsigned char flag2, unsigned char flag3 );
+	    unsigned char flag2, unsigned char flag3,
+	    const wxString& destination, const wxString& tx_msg,
+	    const wxString& tx_stats);
 
     int getConnectionState();
 

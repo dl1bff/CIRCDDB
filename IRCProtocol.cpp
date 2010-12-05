@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "IRCProtocol.h"
 
-#define CIRCDDB_VERSION	  "1.0"
+#define CIRCDDB_VERSION	  "1.1"
 
 IRCProtocol::IRCProtocol ( IRCApplication * app,
     const wxString& callsign, const wxString& password, const wxString& channel,

@@ -85,7 +85,7 @@ int main (int argc, char *argv[])
   CIRCDDB ii( wxT("group1-irc.ircddb.net"), 9007,
       wxString(argv[1], wxConvUTF8),
       wxString(argv[2], wxConvUTF8),
-      wxT("test_lib:20101027")); 
+      wxT("test_lib:20101205")); 
 
 
   wxLogVerbose(wxT("main: before open"));
@@ -130,6 +130,26 @@ int main (int argc, char *argv[])
 	      wxT("DB0DF  B"),
 	      wxT("DB0DF  G"),
 	      0, (i & 255), ((i >> 8) & 255));
+
+	  ii.sendHeardWithTXMsg(
+	      wxT("DL1BFF  "),
+	      wxT("TEST"),
+	      wxT("CQCQCQ  "),
+	      wxT("DB0DF  B"),
+	      wxT("DB0DF  G"),
+	      0, 0, 0,
+	      wxT("XRF023 B"),
+	      wxT("\thttp://ircddb.net\n\n"));
+
+	  ii.sendHeardWithTXStats(
+	      wxT("DL1BFF  "),
+	      wxT("TEST"),
+	      wxT("CQCQCQ  "),
+	      wxT("DB0DF  B"),
+	      wxT("DB0DF  G"),
+	      0, 0, 0,
+	      500, 250, 120 );
+
 
 	  break;
       }
