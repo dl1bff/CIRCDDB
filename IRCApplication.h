@@ -41,6 +41,8 @@ class IRCApplication
   virtual void setCurrentNick(const wxString& nick) = 0;
   virtual void setTopic(const wxString& topic) = 0;
   
+  virtual void setBestServer(const wxString& ircUser) = 0;
+
   virtual void setSendQ( IRCMessageQueue * s ) = 0;
   virtual IRCMessageQueue * getSendQ (void) = 0;
 	

@@ -2,7 +2,7 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,7 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "IRCProtocol.h"
 
-#define CIRCDDB_VERSION	  "1.1"
+#include <wx/regex.h>
+
+#define CIRCDDB_VERSION	  "1.2"
 
 IRCProtocol::IRCProtocol ( IRCApplication * app,
     const wxString& callsign, const wxString& password, const wxString& channel,
@@ -128,6 +130,15 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
     {
       if (state == 4)
       {
+	if (m->params.GetCount() > 1)
+	{
+	  wxRegEx serverNamePattern(wxT("^grp[1-9]s[1-9].ircDDB$"));
+
+	  if (serverNamePattern.Matches( m->params[1] ))
+	  {
+	    app->setBestServer(wxT("s-") + m->params[1].SubString(0,5));
+	  }
+	}
 	state = 5;  // next: JOIN
 	app->setCurrentNick(currentNick);
       }

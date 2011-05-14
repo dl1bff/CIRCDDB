@@ -2,7 +2,7 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -108,6 +108,7 @@ wxDateTime IRCDDBAppRptrObject::maxTime((time_t) 950000000);  // February 2000
 
 WX_DECLARE_STRING_HASH_MAP( IRCDDBAppRptrObject, IRCDDBAppRptrMap );
 
+WX_DECLARE_STRING_HASH_MAP( wxString, IRCDDBAppModuleMap );
 
 class IRCDDBAppPrivate
 {
@@ -117,7 +118,8 @@ class IRCDDBAppPrivate
   : tablePattern(wxT("^[0-9]$")),
     datePattern(wxT("^20[0-9][0-9]-((1[0-2])|(0[1-9]))-((3[01])|([12][0-9])|(0[1-9]))$")),
     timePattern(wxT("^((2[0-3])|([01][0-9])):[0-5][0-9]:[0-5][0-9]$")),
-    dbPattern(wxT("^[0-9A-Z_]{8}$"))
+    dbPattern(wxT("^[0-9A-Z_]{8}$")),
+    modulePattern(wxT("^[ABCD]D?$"))
   {}
 
   IRCMessageQueue * sendQ;
@@ -132,12 +134,14 @@ class IRCDDBAppPrivate
   wxRegEx datePattern;
   wxRegEx timePattern;
   wxRegEx dbPattern;
+  wxRegEx modulePattern;
 
   int state;
   int timer;
 
   wxString updateChannel;
   wxString channelTopic;
+  wxString bestServer;
 
   bool initReady;
 
@@ -147,6 +151,9 @@ class IRCDDBAppPrivate
   wxMutex rptrMapMutex;
 
   IRCMessageQueue replyQ;
+
+  IRCDDBAppModuleMap moduleMap;
+  wxMutex moduleMapMutex;
 };
 
 	
@@ -178,6 +185,37 @@ IRCDDBApp::~IRCDDBApp()
   }
   delete d;
 }
+
+
+void IRCDDBApp::rptrQTH( double latitude, double longitude, const wxString& desc1,
+             const wxString& desc2, const wxString& infoURL )
+{
+
+  wxString f = wxString::Format(wxT("%+09.5f %+010.5f"), latitude, longitude);
+
+
+  wxLogVerbose(f);
+}
+
+
+void IRCDDBApp::rptrQRG( const wxString& module, double txFrequency, double duplexShift,
+    double range, double agl )
+{
+
+  if (d->modulePattern.Matches(module))
+  {
+    wxString f = module + wxT(" ") + wxString::Format(wxT("%011.5f %+010.5f %06.2f %06.1f"),
+	      txFrequency, duplexShift, range / 1609.344, agl );
+
+    f.Replace( wxT(","), wxT("."));
+
+    wxMutexLocker lock(d->moduleMapMutex);
+    d->moduleMap[module] = f;
+
+    wxLogVerbose(f);
+  }
+}
+
 
 int IRCDDBApp::getConnectionState()
 {
@@ -338,6 +376,12 @@ void IRCDDBApp::setCurrentNick(const wxString& nick)
   wxLogVerbose(wxT("IRCDDBApp::setCurrentNick ") + nick);
 }
 
+void IRCDDBApp::setBestServer(const wxString& ircUser)
+{
+  d->bestServer = ircUser;
+  wxLogVerbose(wxT("IRCDDBApp::setBestServer ") + ircUser);
+}
+
 void IRCDDBApp::setTopic(const wxString& topic)
 {
   d->channelTopic = topic;
@@ -350,15 +394,45 @@ bool IRCDDBApp::findServerUser()
   bool found = false;
 
   IRCDDBAppUserMap::iterator it;
-  // int i = 0;
 
   for( it = d->user.begin(); it != d->user.end(); ++it )
   {
-    wxString key = it->first;
     IRCDDBAppUserObject u = it->second;
 
-    // i++;
-    // wxLogVerbose(wxT("user %d: ") + u.nick, i);
+    if (u.nick.StartsWith(wxT("s-")) && u.op && !d->myNick.IsSameAs(u.nick)
+      && u.nick.IsSameAs(d->bestServer))
+    {
+      d->currentServer = u.nick;
+      found = true;
+      break;
+    }
+  }
+
+  if (found)
+    return true;
+
+  if (d->bestServer.Len() == 8)
+  {
+    for( it = d->user.begin(); it != d->user.end(); ++it )
+    {
+      IRCDDBAppUserObject u = it->second;
+
+      if (u.nick.StartsWith(d->bestServer.SubString(0,6)) && u.op &&
+	!d->myNick.IsSameAs(u.nick) )
+      {
+	d->currentServer = u.nick;
+	found = true;
+	break;
+      }
+    }
+  }
+
+  if (found)
+    return true;
+
+  for( it = d->user.begin(); it != d->user.end(); ++it )
+  {
+    IRCDDBAppUserObject u = it->second;
 
     if (u.nick.StartsWith(wxT("s-")) && u.op && !d->myNick.IsSameAs(u.nick))
     {

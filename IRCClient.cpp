@@ -2,7 +2,7 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 IRCClient::IRCClient( IRCApplication * app, const wxString& update_channel,
     const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
-    const wxString& versionInfo )
+    const wxString& versionInfo, const wxString& localAddr )
      : wxThread(wxTHREAD_JOINABLE)
 {
   safeStringCopy(host_name, hostName.mb_str(), sizeof host_name);
@@ -63,6 +63,15 @@ IRCClient::IRCClient( IRCApplication * app, const wxString& update_channel,
   this -> password = password;
 
   this -> app = app;
+  
+  if (localAddr.IsEmpty())
+  {
+    safeStringCopy(local_addr, "0.0.0.0", sizeof local_addr);
+  }
+  else
+  {
+    safeStringCopy(local_addr, localAddr.mb_str(), sizeof local_addr);
+  }
 
   proto = new IRCProtocol ( app, this->callsign, password, update_channel, versionInfo );
 
@@ -107,15 +116,30 @@ void IRCClient::stopWork()
 wxThread::ExitCode IRCClient::Entry ()
 {
 
-  unsigned int numAddr = 0;
+  unsigned int numAddr;
 
 #define MAXIPV4ADDR 10
   struct sockaddr_in addr[MAXIPV4ADDR];
+
+  struct sockaddr_in myaddr;
 
   int state = 0;
   int timer = 0;
   int sock = 0;
   unsigned int currentAddr = 0;
+
+  int result;
+
+
+  numAddr = 0;
+
+  result = getAllIPV4Addresses(local_addr, 0, &numAddr, &myaddr, 1);
+
+  if ((result != 0) || (numAddr != 1))
+  {
+    wxLogVerbose(wxT("IRCClient::Entry: local address not parseable, using 0.0.0.0"));
+    memset(&myaddr, 0x00, sizeof(struct sockaddr_in));
+  }
 
   while (true)
   {
@@ -190,11 +214,37 @@ wxThread::ExitCode IRCClient::Entry ()
 #endif
 	  else
 	  {
-	    unsigned char * h = (unsigned char *) &(addr[currentAddr].sin_addr);
+	    unsigned char * h = (unsigned char *) &(myaddr.sin_addr);
+	    int res;
+
+	    if ((h[0] != 0) || (h[1] != 0) || (h[2] != 0) || (h[3] != 0))
+	    {
+	      wxLogVerbose(wxT("IRCClient::Entry: bind: local address %d.%d.%d.%d"), 
+		   h[0], h[1], h[2], h[3]);
+	    }
+
+	    res = bind(sock, (struct sockaddr *) &myaddr, sizeof (struct sockaddr_in));
+
+	    if (res != 0)
+	    {
+
+		wxLogSysError(wxT("IRCClient::Entry: bind"));
+#if defined(__WINDOWS__)
+		closesocket(sock);
+#else
+		close(sock);
+#endif
+		state = 0;
+		timer = 30;
+		break;
+	    }
+
+
+	    h = (unsigned char *) &(addr[currentAddr].sin_addr);
 	    wxLogVerbose(wxT("IRCClient::Entry: trying to connect to %d.%d.%d.%d"), 
 		   h[0], h[1], h[2], h[3]);
 		
-	    int res = connect(sock, (struct sockaddr *) (addr + currentAddr), sizeof (struct sockaddr_in));
+	    res = connect(sock, (struct sockaddr *) (addr + currentAddr), sizeof (struct sockaddr_in));
 
 	    if (res == 0)
 	    {

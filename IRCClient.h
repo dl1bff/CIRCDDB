@@ -2,7 +2,8 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2011   Jonathan Naylor, G4KLX
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -37,7 +38,7 @@ class IRCClient : public wxThread
 
   IRCClient( IRCApplication * app, const wxString& update_channel,
       const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
-      const wxString& versionInfo );
+      const wxString& versionInfo, const wxString& localAddr );
 
   ~IRCClient();
 
@@ -56,6 +57,7 @@ class IRCClient : public wxThread
   private:
 
   char host_name[100];
+  char local_addr[100];
   unsigned int port;
   wxString callsign;
   wxString password;

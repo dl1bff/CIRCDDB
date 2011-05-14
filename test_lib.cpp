@@ -2,7 +2,7 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,10 +38,10 @@ int main (int argc, char *argv[])
   userList.Add(wxT("DL5DI   "));
   userList.Add(wxT("Y35O    "));
 
-  rptrList.Add(wxT("REF006 C"));
   rptrList.Add(wxT("XRF023 A"));
   rptrList.Add(wxT("DB0DF  B"));
   rptrList.Add(wxT("DB0MYK B"));
+  rptrList.Add(wxT("DB0VOX B"));
 
   gwList.Add(wxT("DB0VOX G"));
   gwList.Add(wxT("DB0DF  G"));
@@ -78,15 +78,28 @@ int main (int argc, char *argv[])
 
   if (argc < 3)
   {
-    wxLogError(wxT("Usage: test_lib <username> <password>"));
+    wxLogError(wxT("Usage: test_lib <username> <password> [<local bind address>]"));
     return 1;
+  }
+
+  wxString localAddr = wxEmptyString;
+
+  if (argc >= 4)
+  {
+    localAddr =  wxString(argv[3], wxConvUTF8);
   }
 
   CIRCDDB ii( wxT("group1-irc.ircddb.net"), 9007,
       wxString(argv[1], wxConvUTF8),
       wxString(argv[2], wxConvUTF8),
-      wxT("test_lib:20101205")); 
+      wxT("test_lib:20110501"),
+      localAddr); 
 
+  ii.rptrQTH( 52, 13, wxT("line1"), wxT("line2"), wxT("http://example.com/"));
+
+  ii.rptrQRG( wxT("A"), 1298, -28, 100, 5 );
+  ii.rptrQRG( wxT("AD"), 1270, 0, 100, 5 );
+  ii.rptrQRG( wxT("B"), 439, -7.6, 100, 5 );
 
   wxLogVerbose(wxT("main: before open"));
 
@@ -138,7 +151,7 @@ int main (int argc, char *argv[])
 	      wxT("DB0DF  B"),
 	      wxT("DB0DF  G"),
 	      0, 0, 0,
-	      wxT("XRF023 B"),
+	      wxT(""),
 	      wxT("\thttp://ircddb.net\n\n"));
 
 	  ii.sendHeardWithTXStats(
@@ -209,6 +222,8 @@ int main (int argc, char *argv[])
     }
 
     wxSleep(1);
+
+    ii.kickWatchdog(wxT("test_lib"));
   }
   wxLogVerbose(wxT("main program running"));
 

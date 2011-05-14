@@ -2,7 +2,8 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2011   Jonathan Naylor, G4KLX
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -38,16 +39,50 @@ enum DSTAR_PROTOCOL {
 	DP_DPLUS
 };
 
+
 struct CIRCDDBPrivate;
 
 class CIRCDDB {
 public:
 	CIRCDDB(const wxString& hostName, unsigned int port, const wxString& callsign, const wxString& password,
-	    const wxString& versionInfo );
+	    const wxString& versionInfo, const wxString& localAddr = wxEmptyString );
 	~CIRCDDB();
 
 	// A false return implies a network error, or unable to log in
 	bool open();
+
+
+	// rptrQTH can be called multiple times if necessary
+	//   latitude     WGS84 position of antenna in degrees, positive value -> NORTH
+	//   longitude    WGS84 position of antenna in degrees, positive value -> EAST
+	//   desc1, desc2   20-character description of QTH
+	//   infoURL      URL of a web page with information about the repeater
+
+	void rptrQTH( double latitude, double longitude, const wxString& desc1,
+	    const wxString& desc2, const wxString& infoURL );
+
+
+
+	// rptrQRG can be called multiple times if necessary
+	//  module      letter of the module, valid values: "A", "B", "C", "D", "AD", "BD", "CD", "DD"
+	//  txFrequency   repeater TX frequency in MHz
+	//  duplexShift   duplex shift in MHz (positive or negative value):  RX_freq = txFrequency + duplexShift
+	//  range       range of the repeater in meters (meters = miles * 1609.344)
+	//  agl         height of the antenna above ground in meters (meters = feet * 0.3048)
+
+	void rptrQRG( const wxString& module, double txFrequency, double duplexShift, double range, double agl );
+
+
+	// If you call this method once, watchdog messages will be sent to the
+	// to the ircDDB network every 15 minutes. Invoke this method every 1-2 minutes to indicate
+	// that the gateway is working properly. After activating the watchdog, a red LED will be displayed
+	// on the ircDDB web page if this method is not called within a period of about 30 minutes.
+	// The string wdInfo should contain information about the source of the alive messages, e.g.,
+	// version of the RF decoding software. The ircDDB java software sets this to "rpm_ircddbmhd-x.z-z".
+
+	void kickWatchdog(const wxString& wdInfo);
+
+
 
 	// get internal network status
 	int getConnectionState();

@@ -2,7 +2,8 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2011   Jonathan Naylor, G4KLX
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -37,7 +38,7 @@ struct CIRCDDBPrivate
 
 CIRCDDB::CIRCDDB(const wxString& hostName, unsigned int port,
     const wxString& callsign, const wxString& password,
-    const wxString& versionInfo ) : d( new CIRCDDBPrivate )
+    const wxString& versionInfo, const wxString& localAddr  ) : d( new CIRCDDBPrivate )
 
 {
   wxString update_channel = wxT("#dstar");
@@ -45,7 +46,7 @@ CIRCDDB::CIRCDDB(const wxString& hostName, unsigned int port,
   d->app = new IRCDDBApp(update_channel);
 
   d->client = new IRCClient( d->app, update_channel, hostName, port, callsign,
-    password, versionInfo );
+    password, versionInfo, localAddr );
 }
 
 CIRCDDB::~CIRCDDB()
@@ -67,6 +68,25 @@ bool CIRCDDB::open()
 int CIRCDDB::getConnectionState()
 {
   return d->app->getConnectionState();
+}
+
+
+void CIRCDDB::rptrQTH( double latitude, double longitude, const wxString& desc1,
+            const wxString& desc2, const wxString& infoURL )
+{
+  d->app->rptrQTH(latitude, longitude, desc1, desc2, infoURL);
+}
+
+
+void CIRCDDB::rptrQRG( const wxString& module, double txFrequency, double duplexShift,
+    double range, double agl )
+{
+  d->app->rptrQRG(module, txFrequency, duplexShift, range, agl);
+}
+
+
+void CIRCDDB::kickWatchdog ( const wxString& wdInfo )
+{
 }
 
 

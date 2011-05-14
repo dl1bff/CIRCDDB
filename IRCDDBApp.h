@@ -2,7 +2,7 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -50,6 +50,8 @@ class IRCDDBApp : public IRCApplication, wxThread
     virtual void setCurrentNick(const wxString& nick);
     virtual void setTopic(const wxString& topic);
 
+    virtual void setBestServer(const wxString& ircUser);
+
     virtual void setSendQ( IRCMessageQueue * s );
     virtual IRCMessageQueue * getSendQ ();
 
@@ -72,6 +74,12 @@ class IRCDDBApp : public IRCApplication, wxThread
 	    const wxString& tx_stats);
 
     int getConnectionState();
+
+    void rptrQRG( const wxString& module, double txFrequency, double duplexShift,
+	double range, double agl );
+
+    void rptrQTH( double latitude, double longitude, const wxString& desc1,
+                 const wxString& desc2, const wxString& infoURL );
 
   protected:
     virtual wxThread::ExitCode Entry();
