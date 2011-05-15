@@ -2,7 +2,7 @@
 
 CIRCDDB - ircDDB client library in C++
 
-Copyright (C) 2010   Michael Dirska, DL1BFF (dl1bff@mdx.de)
+Copyright (C) 2010-2011   Michael Dirska, DL1BFF (dl1bff@mdx.de)
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -175,46 +175,3 @@ void IRCMessage::composeMessage ( wxString& output )
   output = o;
 }
 
-/*
-	void writeMessage ( java.io.OutputStream os, boolean debug ) throws java.io.IOException
-	{
-
-		if (debug)
-		{
-			System.out.print("T [" + prefix + "]" );
-
-                        System.out.print(" [" + command +"]" );
-
-                        for (int i=0; i < numParams; i++)
-                        {
-                        	System.out.print(" [" + params[i] + "]" );
-                        }
-                        System.out.println();
-		}
-
-		java.io.PrintWriter p = new java.io.PrintWriter(os);
-
-		if (prefix.length() > 0)
-		{
-			p.format(":%s ", prefix);
-		}
-
-		p.print(command);
-
-		for (int i=0; i < numParams; i++)
-		{
-			if (i == (numParams - 1))
-			{
-				p.format(" :%s", params[i]);
-			}
-			else
-			{
-				p.format(" %s", params[i]);
-			}
-		}
-
-		p.print("\r\n");
-		p.flush();
-
-	}
-*/

@@ -138,6 +138,7 @@ class IRCDDBAppPrivate
 
   int state;
   int timer;
+  int infoTimer;
 
   wxString updateChannel;
   wxString channelTopic;
@@ -154,6 +155,9 @@ class IRCDDBAppPrivate
 
   IRCDDBAppModuleMap moduleMap;
   wxMutex moduleMapMutex;
+
+  wxString rptrLocation;
+  wxString rptrInfoURL;
 };
 
 	
@@ -191,10 +195,36 @@ void IRCDDBApp::rptrQTH( double latitude, double longitude, const wxString& desc
              const wxString& desc2, const wxString& infoURL )
 {
 
-  wxString f = wxString::Format(wxT("%+09.5f %+010.5f"), latitude, longitude);
+  wxString pos = wxString::Format(wxT("%+09.5f %+010.5f"), latitude, longitude);
 
+  wxString d1 = desc1;
+  wxString d2 = desc2;
 
-  wxLogVerbose(f);
+  d1.Append(wxT(' '), 20);
+  d2.Append(wxT(' '), 20);
+
+  wxRegEx nonValid(wxT("[^a-zA-Z0-9 +&(),./'-]"));
+
+  nonValid.Replace(&d1, wxEmptyString);
+  nonValid.Replace(&d2, wxEmptyString);
+
+  pos.Replace( wxT(","), wxT("."));
+  d1.Replace(wxT(" "), wxT("_"));
+  d2.Replace(wxT(" "), wxT("_"));
+
+  d->rptrLocation = pos + wxT(" ") + d1.Mid(0, 20) + wxT(" ") + d2.Mid(0, 20);
+
+  wxLogVerbose(wxT("QTH: ") + d->rptrLocation);
+
+  wxRegEx urlNonValid(wxT("[^[:graph:]]"));
+
+  d->rptrInfoURL = infoURL;
+
+  urlNonValid.Replace( & d->rptrInfoURL, wxEmptyString );
+
+  wxLogVerbose(wxT("URL: ") + d->rptrInfoURL.Mid(0, 120));
+
+  d->infoTimer = 5; // send info in 5 seconds
 }
 
 
@@ -212,7 +242,9 @@ void IRCDDBApp::rptrQRG( const wxString& module, double txFrequency, double dupl
     wxMutexLocker lock(d->moduleMapMutex);
     d->moduleMap[module] = f;
 
-    wxLogVerbose(f);
+    wxLogVerbose(wxT("QRG: ") + f);
+
+    d->infoTimer = 5; // send info in 5 seconds
   }
 }
 
@@ -417,7 +449,7 @@ bool IRCDDBApp::findServerUser()
     {
       IRCDDBAppUserObject u = it->second;
 
-      if (u.nick.StartsWith(d->bestServer.SubString(0,6)) && u.op &&
+      if (u.nick.StartsWith(d->bestServer.Mid(0,7)) && u.op &&
 	!d->myNick.IsSameAs(u.nick) )
       {
 	d->currentServer = u.nick;
@@ -1166,6 +1198,9 @@ wxThread::ExitCode IRCDDBApp::Entry()
       else
       {
 	wxLogVerbose(wxT( "IRCDDBApp: state=6 initialization completed"));
+
+	d->infoTimer = 2;
+
 	d->initReady = true;
 	d->state = 7;
       }
@@ -1176,6 +1211,54 @@ wxThread::ExitCode IRCDDBApp::Entry()
       if (getSendQ() == NULL)
       {
 	d->state = 10; // disconnect DB
+      }
+
+      if (d->infoTimer > 0)
+      {
+	d->infoTimer --;
+
+	if (d->infoTimer == 0)
+	{
+	if (d->rptrLocation.Len() > 0)
+	{
+	  IRCMessage * m = new IRCMessage(d->currentServer,
+	    wxT("IRCDDB QTH: ") + d->rptrLocation);
+
+	  IRCMessageQueue * q = getSendQ();
+	  if (q != NULL)
+	  {
+	    q->putMessage(m);
+	  }
+	}
+
+	if (d->rptrInfoURL.Len() > 0)
+	{
+	  IRCMessage * m = new IRCMessage(d->currentServer,
+	    wxT("IRCDDB URL: ") + d->rptrInfoURL);
+
+	  IRCMessageQueue * q = getSendQ();
+	  if (q != NULL)
+	  {
+	    q->putMessage(m);
+	  }
+	}
+
+	wxMutexLocker lock(d->moduleMapMutex);
+
+	IRCDDBAppModuleMap::iterator it;
+	for( it = d->moduleMap.begin(); it != d->moduleMap.end(); ++it )
+	{
+	  wxString value = it->second;
+	  IRCMessage * m = new IRCMessage(d->currentServer,
+	    wxT("IRCDDB QRG: ") + value);
+
+	  IRCMessageQueue * q = getSendQ();
+	  if (q != NULL)
+	  {
+	    q->putMessage(m);
+	  }
+	}
+	}
       }
       break;
 				

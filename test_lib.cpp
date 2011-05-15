@@ -92,7 +92,7 @@ int main (int argc, char *argv[])
   CIRCDDB ii( wxT("group1-irc.ircddb.net"), 9007,
       wxString(argv[1], wxConvUTF8),
       wxString(argv[2], wxConvUTF8),
-      wxT("test_lib:20110501"),
+      wxT("test_lib:20110515"),
       localAddr); 
 
   ii.rptrQTH( 52, 13, wxT("line1"), wxT("line2"), wxT("http://example.com/"));
@@ -117,7 +117,7 @@ int main (int argc, char *argv[])
     if ( (i & 0x03) == 0 )
     {
       wxString s;
-      switch ( i & 0x0c )
+      switch ( i & 0x3c )
       {
 	case 0:
 	  s = userList.Item( (i >> 4) & 0x03 );
@@ -135,7 +135,9 @@ int main (int argc, char *argv[])
 	  s = gwList.Item( (i >> 4) & 0x03 );
 	  ii.findGateway(s);
 	  wxLogVerbose(wxT("REQGWAY: (") + s + wxT(")"));
+	  break;
 
+	case 0x10: 
 	  ii.sendHeard(
 	      wxT("DL1BFF  "),
 	      wxT("TEST"),
@@ -162,9 +164,12 @@ int main (int argc, char *argv[])
 	      wxT("DB0DF  G"),
 	      0, 0, 0,
 	      500, 250, 120 );
-
-
 	  break;
+
+	case 0x20:
+	  ii.rptrQRG( wxT("A"), 10000.0 + i, -28, 100, 5 );
+	  break;
+	    
       }
     }
 

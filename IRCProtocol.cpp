@@ -136,7 +136,7 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
 
 	  if (serverNamePattern.Matches( m->params[1] ))
 	  {
-	    app->setBestServer(wxT("s-") + m->params[1].SubString(0,5));
+	    app->setBestServer(wxT("s-") + m->params[1].Mid(0,6));
 	  }
 	}
 	state = 5;  // next: JOIN
