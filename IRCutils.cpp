@@ -36,10 +36,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 
-#include "IRCutils.h"
 
 #include <wx/wx.h>
 
+#include "IRCutils.h"
 
 
 int getAllIPV4Addresses ( const char * name, unsigned short port,
@@ -157,4 +157,23 @@ void safeStringCopy (char * dest, const char * src, unsigned int buf_size)
   dest[i] = 0;
 }
 
+
+wxString getCurrentTime(void)
+{
+  time_t now = time(NULL);
+  struct tm* tm;
+  struct tm tm_buf;
+  char buffer[25];
+
+#if defined(__WINDOWS__)
+  gmtime_s( &tm_buf, &now );
+  tm = &tm_buf;
+#else
+  tm = gmtime_r(&now, &tm_buf);
+#endif
+
+  strftime(buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", tm);
+
+  return wxString(buffer, wxConvLocal);
+}
 

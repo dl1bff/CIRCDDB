@@ -27,4 +27,5 @@ int getAllIPV4Addresses ( const char * name, unsigned short port,
 
 void safeStringCopy (char * dest, const char * src, unsigned int buf_size);
 
+wxString getCurrentTime(void);
 

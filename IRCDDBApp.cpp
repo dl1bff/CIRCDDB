@@ -618,6 +618,7 @@ bool IRCDDBApp::findRepeater(const wxString& rptrCall)
   return true;
 }
 
+
 bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
         const wxString& yourCall, const wxString& rpt1,
         const wxString& rpt2, unsigned char flag1,
@@ -652,12 +653,7 @@ bool IRCDDBApp::sendHeard(const wxString& myCall, const wxString& myCallExt,
   {
     wxString cmd =  wxT("UPDATE ");
 
-    time_t now = ::time(NULL);
-    struct tm* tm = ::gmtime(&now);
-    char buffer[25U];
-    ::strftime(buffer, 25U, "%Y-%m-%d %H:%M:%S", tm);
-    wxString dtBuff = wxString(buffer, wxConvLocal);
-    cmd.Append(dtBuff);
+    cmd.Append( getCurrentTime() );
 
     cmd.Append(wxT(" "));
 
