@@ -120,7 +120,10 @@ class IRCDDBAppPrivate
     timePattern(wxT("^((2[0-3])|([01][0-9])):[0-5][0-9]:[0-5][0-9]$")),
     dbPattern(wxT("^[0-9A-Z_]{8}$")),
     modulePattern(wxT("^[ABCD]D?$"))
-  {}
+  {
+    wdTimer = 0;
+    wdCounter = 0;
+  }
 
   IRCMessageQueue * sendQ;
 
@@ -158,6 +161,10 @@ class IRCDDBAppPrivate
 
   wxString rptrLocation;
   wxString rptrInfoURL;
+
+  wxString wdInfo;
+  int wdTimer;
+  int wdCounter;
 };
 
 	
@@ -245,6 +252,23 @@ void IRCDDBApp::rptrQRG( const wxString& module, double txFrequency, double dupl
     wxLogVerbose(wxT("QRG: ") + f);
 
     d->infoTimer = 5; // send info in 5 seconds
+  }
+}
+
+void IRCDDBApp::kickWatchdog( const wxString& s )
+{
+  if (s.Len() > 0)
+  {
+    wxRegEx nonValid(wxT("[^[:graph:]]"));
+    d->wdInfo = s;
+    nonValid.Replace(& d->wdInfo, wxEmptyString);
+
+    if (d->wdTimer == 0)
+    {
+      d->wdTimer ++;
+    }
+
+    d->wdCounter ++;
   }
 }
 
@@ -1254,6 +1278,27 @@ wxThread::ExitCode IRCDDBApp::Entry()
 	    q->putMessage(m);
 	  }
 	}
+	}
+      }
+
+      if (d->wdTimer > 0)
+      {
+	d->wdTimer --;
+	if (d->wdTimer == 0)
+	{
+	  d->wdTimer = 900;  // 15 minutes
+
+	  IRCMessage * m = new IRCMessage(d->currentServer,
+	              wxT("IRCDDB WATCHDOG: ") + getCurrentTime() +
+		      wxT(" ") + d->wdInfo.Mid(0,120) +
+		      wxString::Format(wxT(" %d"), d->wdCounter ));
+
+	  IRCMessageQueue * q = getSendQ();
+	  if (q != NULL)
+	  {
+	    q->putMessage(m);
+	    d->wdCounter = 0;
+	  }
 	}
       }
       break;

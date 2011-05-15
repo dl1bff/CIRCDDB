@@ -81,6 +81,8 @@ class IRCDDBApp : public IRCApplication, wxThread
     void rptrQTH( double latitude, double longitude, const wxString& desc1,
                  const wxString& desc2, const wxString& infoURL );
 
+    void kickWatchdog( const wxString& wdInfo );
+
   protected:
     virtual wxThread::ExitCode Entry();
 

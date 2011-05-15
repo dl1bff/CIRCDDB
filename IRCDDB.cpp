@@ -87,6 +87,7 @@ void CIRCDDB::rptrQRG( const wxString& module, double txFrequency, double duplex
 
 void CIRCDDB::kickWatchdog ( const wxString& wdInfo )
 {
+  d->app->kickWatchdog( wdInfo );
 }
 
 

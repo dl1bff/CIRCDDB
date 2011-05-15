@@ -137,6 +137,11 @@ int main (int argc, char *argv[])
 	  wxLogVerbose(wxT("REQGWAY: (") + s + wxT(")"));
 	  break;
 
+	case 0x0C:
+	  ii.kickWatchdog(wxT("test_lib"));
+	  break;
+	    
+
 	case 0x10: 
 	  ii.sendHeard(
 	      wxT("DL1BFF  "),
@@ -169,7 +174,7 @@ int main (int argc, char *argv[])
 	case 0x20:
 	  ii.rptrQRG( wxT("A"), 10000.0 + i, -28, 100, 5 );
 	  break;
-	    
+
       }
     }
 
@@ -228,7 +233,6 @@ int main (int argc, char *argv[])
 
     wxSleep(1);
 
-    ii.kickWatchdog(wxT("test_lib"));
   }
   wxLogVerbose(wxT("main program running"));
 
