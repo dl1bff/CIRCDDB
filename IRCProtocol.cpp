@@ -230,10 +230,10 @@ bool IRCProtocol::processQueues ( IRCMessageQueue * recvQ, IRCMessageQueue * sen
       {
 	if (app != NULL)
 	{
-	  unsigned int i;
+	  size_t i;
 	  wxString mode = m->params[1];
 
-	  for (i = 1; (i < mode.Len()) && ((unsigned int) m->numParams >= (i+2)); i++)
+	  for (i = 1; (i < mode.Len()) && ((size_t) m->numParams >= (i+2)); i++)
 	  {
 	    if ( mode[i] == wxT('o') )
 	    {
