@@ -78,7 +78,8 @@ public:
 	// that the gateway is working properly. After activating the watchdog, a red LED will be displayed
 	// on the ircDDB web page if this method is not called within a period of about 30 minutes.
 	// The string wdInfo should contain information about the source of the alive messages, e.g.,
-	// version of the RF decoding software. The ircDDB java software sets this to "rpm_ircddbmhd-x.z-z".
+	// version of the RF decoding software. For example, the ircDDB java software sets this
+	// to "rpm_ircddbmhd-x.z-z".  The string wdInfo must contain at least one non-space character.
 
 	void kickWatchdog(const wxString& wdInfo);
 
