@@ -138,7 +138,7 @@ int main (int argc, char *argv[])
 	  break;
 
 	case 0x0C:
-	  ii.kickWatchdog(wxT("test_lib"));
+	  ii.kickWatchdog(wxT("test _ lib"));
 	  break;
 	    
 

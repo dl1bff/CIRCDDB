@@ -263,12 +263,15 @@ void IRCDDBApp::kickWatchdog( const wxString& s )
     d->wdInfo = s;
     nonValid.Replace(& d->wdInfo, wxEmptyString);
 
-    if (d->wdTimer == 0)
+    if (d->wdInfo.Len() > 0)
     {
-      d->wdTimer ++;
-    }
+      if (d->wdTimer == 0)
+      {
+	d->wdTimer ++;
+      }
 
-    d->wdCounter ++;
+      d->wdCounter ++;
+    }
   }
 }
 
