@@ -755,6 +755,7 @@ bool IRCDDBApp::findUser(const wxString& usrCall)
     m2->addParam(wxT(""));
     m2->addParam(wxT(""));
     m2->addParam(wxT(""));
+    m2->addParam(wxT(""));
     d->replyQ.putMessage(m2);
   }
 
