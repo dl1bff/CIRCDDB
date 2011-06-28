@@ -425,6 +425,13 @@ bool CIRCDDB::receiveGateway(wxString& gatewayCallsign, wxString& address, DSTAR
 // A false return implies a network error
 bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address)
 {
+  wxString dummy;
+  return receiveUser(userCallsign, repeaterCallsign, gatewayCallsign, address, dummy);
+}
+
+bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address,
+    wxString& timeStamp)
+{
   IRCDDB_RESPONSE_TYPE rt = d->app->getReplyMessageType();
 
   if (rt != IDRT_USER)
@@ -447,7 +454,7 @@ bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wx
     return false;
   }
 
-  if (m->getParamCount() != 4)
+  if (m->getParamCount() != 5)
   {
     wxLogError(wxT("CIRCDDB::receiveUser: unexpected number of message parameters"));
     return false;
@@ -457,6 +464,7 @@ bool CIRCDDB::receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wx
   repeaterCallsign = m->getParam(1);
   gatewayCallsign = m->getParam(2);
   address = m->getParam(3);
+  timeStamp = m->getParam(4);
 
   delete m;
 

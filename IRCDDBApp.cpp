@@ -962,7 +962,8 @@ void IRCDDBApp::doUpdate ( wxString& msg )
 	  m2->addParam(userCallsign);
 	  m2->addParam(arearp_cs);
 	  m2->addParam(zonerp_cs);
-	  m2->addParam(ip_addr);
+	  m2->addParam(ip_addr); 
+	  m2->addParam(tk + wxT(" ") + timeToken);
 	  d->replyQ.putMessage(m2);
 
 	}

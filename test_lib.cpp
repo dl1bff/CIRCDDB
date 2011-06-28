@@ -92,14 +92,14 @@ int main (int argc, char *argv[])
   CIRCDDB ii( wxT("group1-irc.ircddb.net"), 9007,
       wxString(argv[1], wxConvUTF8),
       wxString(argv[2], wxConvUTF8),
-      wxT("test_lib:20110515"),
+      wxT("test_lib:20110515 test_test"),
       localAddr); 
 
   ii.rptrQTH( 52, 13, wxT("line1"), wxT("line2"), wxT("http://example.com/"));
 
   ii.rptrQRG( wxT("A"), 1298, -28, 100, 5 );
   ii.rptrQRG( wxT("AD"), 1270, 0, 100, 5 );
-  ii.rptrQRG( wxT("B"), 439, -7.6, 100, 5 );
+  ii.rptrQRG( wxT("B"), 439.40625, -7.6, 100, 5 );
 
   wxLogVerbose(wxT("main: before open"));
 
@@ -191,10 +191,12 @@ int main (int argc, char *argv[])
 	    wxString rptr;
 	    wxString gateway;
 	    wxString ipaddr;
+	    wxString timeStamp;
 
-	    ii.receiveUser(user, rptr, gateway, ipaddr);
+	    ii.receiveUser(user, rptr, gateway, ipaddr, timeStamp);
 	    wxLogVerbose(wxT("USER: (") + user + wxT(") (") + rptr +
-		wxT(") (") + gateway + wxT(") (") + ipaddr + wxT(")"));
+		wxT(") (") + gateway + wxT(") (") + ipaddr + wxT(") (") +
+		 timeStamp + wxT(")"));
 	  }
 	  break;
 

@@ -159,6 +159,9 @@ public:
 	// A false return implies a network error
 	bool receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address);
 
+	bool receiveUser(wxString& userCallsign, wxString& repeaterCallsign, wxString& gatewayCallsign, wxString& address,
+	    wxString& timeStamp );
+
 	void close();		// Implictely kills any threads in the IRC code
 
 
