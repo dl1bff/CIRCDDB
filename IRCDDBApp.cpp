@@ -1049,6 +1049,7 @@ void IRCDDBApp::msgQuery (IRCMessage * m)
 	m2->addParam(wxT(""));
 	m2->addParam(wxT(""));
 	m2->addParam(wxT(""));
+	m2->addParam(wxT(""));
 	d->replyQ.putMessage(m2);
       }
     }
