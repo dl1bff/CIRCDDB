@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <wx/regex.h>
 
-#define CIRCDDB_VERSION	  "1.2.3"
+#define CIRCDDB_VERSION	  "1.2.4"
 
 IRCProtocol::IRCProtocol ( IRCApplication * app,
     const wxString& callsign, const wxString& password, const wxString& channel,
